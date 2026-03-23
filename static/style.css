@@ -1,0 +1,238 @@
+/* ---------------- GLOBAL RESET ---------------- */
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ---------------- BACKGROUND ---------------- */
+
+body{
+
+background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
+            url("/static/images/background.jpg");
+
+background-size: cover;
+background-position: center;
+background-repeat: no-repeat;
+background-attachment: fixed;
+
+min-height:100vh;
+
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+
+color:white;
+text-align:center;
+
+}
+
+/* ---------------- TITLES ---------------- */
+
+h1{
+font-size:48px;
+margin-bottom:20px;
+}
+
+h2{
+margin-top:15px;
+margin-bottom:10px;
+font-size:26px;
+}
+
+/* ---------------- BUTTONS ---------------- */
+
+button{
+
+background-color:#3498db;
+color:white;
+
+border:none;
+padding:12px 25px;
+margin:8px;
+
+font-size:16px;
+border-radius:8px;
+
+cursor:pointer;
+
+transition:all 0.3s ease;
+
+}
+
+button:hover{
+
+background-color:#2980b9;
+
+transform:scale(1.05);
+
+box-shadow:0 0 10px rgba(0,0,0,0.6);
+
+}
+
+button:disabled{
+
+background-color:gray;
+cursor:not-allowed;
+transform:none;
+box-shadow:none;
+
+}
+
+.pvp-btn{
+background-color:#2ecc71;
+}
+
+.ai-btn{
+background-color:#e67e22;
+}
+
+/* ---------------- CHESS BOARD ---------------- */
+
+#board{
+
+width:480px;                 /* FIXED (multiple of 8) */
+height:480px;
+
+display:grid;
+grid-template-columns:repeat(8, 1fr);
+grid-template-rows:repeat(8, 1fr);
+
+gap:0;                       /* 🔥 IMPORTANT */
+
+border:4px solid black;
+
+margin:auto;
+
+}
+
+/* board square */
+
+.square{
+
+width:100%;                  /* FIXED */
+height:100%;
+
+display:flex;
+align-items:center;
+justify-content:center;
+
+}
+
+/* square colors */
+
+.white{
+background:#eee1e1;
+}
+
+.black{
+background:#c2212100;          /* improved contrast */
+}
+
+/* move highlight */
+
+.highlight{
+outline:3px solid limegreen;
+}
+
+/* chess pieces */
+
+.piece{
+width:80%;                   /* responsive */
+cursor:grab;
+user-select:none;
+}
+
+/* ---------------- GAME CONTROLS ---------------- */
+
+.controls{
+margin-bottom:15px;
+}
+
+/* ---------------- PROMOTION POPUP ---------------- */
+
+.promotion-box{
+
+display:none;
+
+position:fixed;
+
+top:50%;
+left:50%;
+
+transform:translate(-50%,-50%);
+
+background:#90a3a8;
+
+padding:20px;
+
+border:3px solid rgba(26, 24, 24, 0);
+
+border-radius:10px;
+
+z-index:999;
+
+}
+
+.promotion-box img{
+
+width:40px;
+margin:8px;
+
+cursor:pointer;
+
+transition:0.2s;
+
+}
+
+.promotion-box img:hover{
+transform:scale(1.2);
+}
+
+/* ---------------- RESULT PAGE ---------------- */
+
+.result-box{
+
+background:rgba(0,0,0,0.7);
+
+padding:30px;
+
+border-radius:10px;
+
+box-shadow:0 0 15px black;
+
+}
+
+/* ---------------- LEVEL GRID ---------------- */
+
+.level-container{
+
+display:flex;
+gap:15px;
+margin-top:20px;
+
+}
+
+/* ---------------- MOBILE RESPONSIVE ---------------- */
+
+@media (max-width:600px){
+
+h1{
+font-size:32px;
+}
+
+#board{
+width:320px;
+height:320px;
+}
+
+button{
+font-size:14px;
+padding:10px 18px;
+}
+
+}

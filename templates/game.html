@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Check MateX</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+
+<h1>Check MateX</h1>
+
+<div id="board"></div>
+<div id="promotionBox" class="promotion-box">
+
+<img src="/static/pieces/wq.png" onclick="promote('q')">
+<img src="/static/pieces/wr.png" onclick="promote('r')">
+<img src="/static/pieces/wb.png" onclick="promote('b')">
+<img src="/static/pieces/wn.png" onclick="promote('n')">
+
+</div>
+
+<button onclick="newGame()">Restart</button>
+
+<script src="/static/script.js"></script>
+<h2 id="timer">10:00</h2>
+</body>
+
+</html>
