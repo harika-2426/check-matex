@@ -1,15 +1,4 @@
-# Python
+.venv/
 __pycache__/
 *.pyc
-
-# Virtual environment
-.venv/
-
-# Database
 *.db
-
-# VS Code
-.vscode/
-
-# OS files
-.DS_Store
