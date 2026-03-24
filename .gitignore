@@ -1,15 +1,4 @@
-# Python cache
+.venv/
 __pycache__/
 *.pyc
-
-# Virtual environment
-.venv/
-
-# Database files
 *.db
-
-# VS Code settings (optional)
-.vscode/
-
-# OS files
-.DS_Store
