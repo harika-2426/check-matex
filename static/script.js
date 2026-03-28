@@ -11,6 +11,7 @@ let moveSound = new Audio("/static/sounds/move_sound.wav")
 let gameMode = window.location.pathname.includes("ai") ? "ai" : "pvp"
 
 let pendingPromotion = null
+
 let currentTheme = parseInt(localStorage.getItem("boardTheme")) || 1
 
 /* ---------------- TIMER ---------------- */
@@ -36,6 +37,7 @@ function startTimer() {
             alert("Time Over")
             window.location.href = "/result/draw"
         }
+
     }, 1000)
 }
 
@@ -46,7 +48,7 @@ let pieces = {
     "R": "wr.png", "N": "wn.png", "B": "wb.png", "Q": "wq.png", "K": "wk.png", "P": "wp.png"
 }
 
-/* ---------------- BOARD ---------------- */
+/* ---------------- DRAW BOARD ---------------- */
 
 function drawBoard(fen) {
     boardDiv.innerHTML = ""
@@ -97,42 +99,21 @@ function createSquare(r, c, piece) {
     boardDiv.appendChild(square)
 }
 
-/* ---------------- CLEANERS ---------------- */
+/* ---------------- THEME ---------------- */
+
+function changeBoardTheme() {
+    currentTheme++
+    if (currentTheme > 4) currentTheme = 1
+    localStorage.setItem("boardTheme", currentTheme)
+}
+
+/* ---------------- DOT SYSTEM ---------------- */
 
 function clearDots() {
-    document.querySelectorAll(".moveDot").forEach(d => d.remove())
+    document.querySelectorAll(".moveDot").forEach(dot => dot.remove())
 }
 
-function clearHighlights() {
-    document.querySelectorAll(".highlight").forEach(s => s.classList.remove("highlight"))
-}
-
-function clearCheckHighlight() {
-    document.querySelectorAll(".check").forEach(s => s.classList.remove("check"))
-}
-
-/* ---------------- SAFE CHECK HIGHLIGHT ---------------- */
-
-function highlightCheck(square) {
-    try {
-        if (!square) return
-
-        clearCheckHighlight()
-
-        let sq = convertFromSquare(square)
-        if (!sq) return
-
-        let target = document.querySelector(
-            `[data-row='${sq.row}'][data-col='${sq.col}']`
-        )
-
-        if (target) target.classList.add("check")
-    } catch (e) {
-        console.log("check error:", e)
-    }
-}
-
-/* ---------------- SELECT SQUARE (FIXED CORE BUG) ---------------- */
+/* ---------------- SELECT ---------------- */
 
 function selectSquare() {
     clearHighlights()
@@ -140,9 +121,8 @@ function selectSquare() {
 
     let piece = this.querySelector("img")
 
-    if (!selected) {
+    if (selected == null) {
         if (!piece) return
-
         selected = this
         this.classList.add("highlight")
 
@@ -151,7 +131,7 @@ function selectSquare() {
         fetch("/legal_moves/" + squareName)
             .then(res => res.json())
             .then(data => {
-                if (!data || !Array.isArray(data.moves)) return
+                if (!data || !data.moves) return
 
                 data.moves.forEach(move => {
                     let sq = convertFromSquare(move)
@@ -166,7 +146,6 @@ function selectSquare() {
                     }
                 })
             })
-            .catch(err => console.log("legal move error:", err))
 
     } else {
         let from = selected.dataset.row + selected.dataset.col
@@ -175,25 +154,54 @@ function selectSquare() {
         selected.classList.remove("highlight")
         selected = null
 
-        if (!from || !to) return
-
         movePiece(from, to)
+    }
+}
+
+/* ---------------- CLEAR ---------------- */
+
+function clearHighlights() {
+    document.querySelectorAll(".highlight").forEach(s => s.classList.remove("highlight"))
+}
+
+function clearCheckHighlight() {
+    document.querySelectorAll(".check").forEach(s => s.classList.remove("check"))
+}
+
+/* ---------------- CHECK ---------------- */
+
+function highlightCheck(square) {
+
+    clearCheckHighlight()
+
+    if (!square) return   // 🔥 FIX CRASH
+
+    try {
+        let sq = convertFromSquare(square)
+
+        let target = document.querySelector(
+            `[data-row='${sq.row}'][data-col='${sq.col}']`
+        )
+
+        if (target) {
+            target.classList.add("check")
+        }
+    } catch (e) {
+        console.log("Check highlight error:", e)
     }
 }
 
 /* ---------------- MOVE ---------------- */
 
-function movePiece(from, to) {
-    if (checkPromotion(from, to)) {
-        pendingPromotion = { from, to }
-        document.getElementById("promotionBox").style.display = "flex"
-        return
-    }
+function convertMove(from, to) {
+    return files[from[1]] + (8 - from[0]) + files[to[1]] + (8 - to[0])
+}
 
+function movePiece(from, to) {
     sendMove(from, to, null)
 }
 
-/* ---------------- SEND MOVE (FULL SAFE) ---------------- */
+/* ---------------- SEND MOVE ---------------- */
 
 function sendMove(from, to, promotion) {
     let move = convertMove(from, to)
@@ -207,7 +215,6 @@ function sendMove(from, to, promotion) {
     .then(res => res.json())
     .then(data => {
 
-        if (!data) return
         if (data.error) return
 
         if (data.fen) {
@@ -227,58 +234,38 @@ function sendMove(from, to, promotion) {
             setTimeout(() => {
                 window.location.href = "/result/" + data.result
             }, 500)
+
             return
         }
 
         if (gameMode === "ai") {
             setTimeout(() => {
                 fetch("/ai_move")
-                    .then(res => res.json())
-                    .then(aiData => {
+                .then(res => res.json())
+                .then(aiData => {
 
-                        if (!aiData) return
-
+                    if (aiData.fen) {
                         drawBoard(aiData.fen)
                         moveSound.play()
                         addMoveToHistory("AI move")
+                    }
 
-                        if (aiData.check && aiData.check_square) {
-                            highlightCheck(aiData.check_square)
-                        }
+                    if (aiData.check && aiData.check_square) {
+                        highlightCheck(aiData.check_square)
+                    }
 
-                        if (aiData.result) {
-                            clearInterval(timerInterval)
-                            changeBoardTheme()
+                    if (aiData.result) {
+                        clearInterval(timerInterval)
+                        changeBoardTheme()
 
-                            setTimeout(() => {
-                                window.location.href = "/result/" + aiData.result
-                            }, 500)
-                        }
-                    })
-                    .catch(err => console.log("AI error:", err))
+                        setTimeout(() => {
+                            window.location.href = "/result/" + aiData.result
+                        }, 500)
+                    }
+                })
             }, 1200)
         }
     })
-    .catch(err => console.log("move error:", err))
-}
-
-/* ---------------- CONVERTERS ---------------- */
-
-function convertMove(from, to) {
-    return files[from[1]] + (8 - from[0]) + files[to[1]] + (8 - to[0])
-}
-
-function convertToSquare(r, c) {
-    return files[c] + (8 - r)
-}
-
-function convertFromSquare(square) {
-    if (!square || square.length < 2) return null
-
-    return {
-        row: 8 - parseInt(square[1]),
-        col: files.indexOf(square[0])
-    }
 }
 
 /* ---------------- HISTORY ---------------- */
@@ -290,26 +277,30 @@ function addMoveToHistory(move) {
     historyList.appendChild(item)
 }
 
-/* ---------------- THEME ---------------- */
+/* ---------------- CONVERTERS ---------------- */
 
-function changeBoardTheme() {
-    currentTheme++
-    if (currentTheme > 4) currentTheme = 1
-    localStorage.setItem("boardTheme", currentTheme)
+function convertToSquare(r, c) {
+    return files[c] + (8 - r)
+}
+
+function convertFromSquare(square) {
+    if (!square || square.length < 2) return { row: 0, col: 0 }
+
+    return {
+        row: 8 - parseInt(square[1]),
+        col: files.indexOf(square[0])
+    }
 }
 
 /* ---------------- NEW GAME ---------------- */
 
 function newGame() {
     fetch("/new_game")
-        .then(res => res.json())
-        .then(data => {
-            if (data && data.fen) {
-                drawBoard(data.fen)
-                startTimer()
-            }
-        })
-        .catch(err => console.log("new game error:", err))
+    .then(res => res.json())
+    .then(data => {
+        drawBoard(data.fen)
+        startTimer()
+    })
 }
 
 /* ---------------- INIT ---------------- */
