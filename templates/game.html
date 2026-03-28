@@ -3,7 +3,7 @@
 
 <head>
 <title>Check MateX</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <h1>Check MateX</h1>
@@ -20,8 +20,8 @@
 
 <button onclick="newGame()">Restart</button>
 
-<script src="/static/script.js"></script>
-<h2 id="timer">10:00</h2>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<h2 id="timer">30:00</h2>
 </body>
 
 </html>

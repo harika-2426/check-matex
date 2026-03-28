@@ -3,34 +3,28 @@ let selected = null
 let files = "abcdefgh"
 let historyList = document.getElementById("history")
 
-let time = 600
+let time = 1800
 let timerInterval
 
 let moveSound = new Audio("/static/sounds/move_sound.wav")
-let hitSound = new Audio("/static/sounds/hit_sound.wav")
-let winSound = new Audio("/static/sounds/win_sound.wav")
 
 let gameMode = window.location.pathname.includes("ai") ? "ai" : "pvp"
-
-// ✅ ALWAYS SAVE MODE (IMPORTANT FIX)
 localStorage.setItem("mode", gameMode)
 
 let pendingPromotion = null
 
-/* ---------------- LEVEL SYSTEM ---------------- */
-
 const MAX_LEVEL = 10
 
-// initialize safely
+// ✅ THEME SYSTEM (FIXED - PERSISTENT)
+let currentTheme = parseInt(localStorage.getItem("boardTheme")) || 1
+
 if (!localStorage.getItem("unlockedLevel")) {
     localStorage.setItem("unlockedLevel", "1")
 }
-
 if (!localStorage.getItem("currentLevel")) {
     localStorage.setItem("currentLevel", "1")
 }
 
-// helper functions
 function getCurrentLevel() {
     return parseInt(localStorage.getItem("currentLevel")) || 1
 }
@@ -43,7 +37,6 @@ function unlockNextLevel() {
     let current = getCurrentLevel()
     let unlocked = getUnlockedLevel()
 
-    // unlock only next level
     if (current === unlocked && unlocked < MAX_LEVEL) {
         localStorage.setItem("unlockedLevel", unlocked + 1)
         console.log("✅ Level Unlocked:", unlocked + 1)
@@ -54,7 +47,7 @@ function unlockNextLevel() {
 
 function startTimer() {
     clearInterval(timerInterval)
-    time = 600
+    time = 1800
 
     timerInterval = setInterval(() => {
         time--
@@ -88,6 +81,8 @@ let pieces = {
 
 function drawBoard(fen) {
     boardDiv.innerHTML = ""
+    clearCheckHighlight()
+
     let rows = fen.split(" ")[0].split("/")
 
     for (let r = 0; r < 8; r++) {
@@ -112,7 +107,12 @@ function createSquare(r, c, piece) {
     let square = document.createElement("div")
     square.classList.add("square")
 
-    square.classList.add((r + c) % 2 == 0 ? "white" : "black")
+    let baseColor = (r + c) % 2 == 0 ? "white" : "black"
+    square.classList.add(baseColor)
+
+    // ✅ APPLY THEME (FIXED)
+    if (currentTheme === 2) square.classList.add("theme2")
+    if (currentTheme === 3) square.classList.add("theme3")
 
     square.dataset.row = r
     square.dataset.col = c
@@ -128,10 +128,39 @@ function createSquare(r, c, piece) {
     boardDiv.appendChild(square)
 }
 
-/* ---------------- SELECT PIECE ---------------- */
+/* ---------------- THEME CHANGE ---------------- */
+
+function changeBoardTheme() {
+    currentTheme++
+
+    if (currentTheme > 3) currentTheme = 1
+
+    localStorage.setItem("boardTheme", currentTheme)
+
+    drawBoardFromServer()
+}
+
+// helper to redraw from backend
+function drawBoardFromServer() {
+    fetch("/current_fen")
+        .then(res => res.json())
+        .then(data => {
+            drawBoard(data.fen)
+        })
+}
+
+/* ---------------- DOT SYSTEM ---------------- */
+
+function clearDots() {
+    document.querySelectorAll(".moveDot").forEach(dot => dot.remove())
+}
+
+/* ---------------- SELECT ---------------- */
 
 function selectSquare() {
     clearHighlights()
+    clearDots()
+
     let piece = this.querySelector("img")
 
     if (selected == null) {
@@ -149,7 +178,12 @@ function selectSquare() {
                     let target = document.querySelector(
                         `[data-row='${sq.row}'][data-col='${sq.col}']`
                     )
-                    if (target) target.classList.add("highlightMove")
+
+                    if (target) {
+                        let dot = document.createElement("div")
+                        dot.classList.add("moveDot")
+                        target.appendChild(dot)
+                    }
                 })
             })
 
@@ -164,17 +198,35 @@ function selectSquare() {
     }
 }
 
-/* ---------------- CLEAR HIGHLIGHTS ---------------- */
+/* ---------------- CLEAR ---------------- */
 
 function clearHighlights() {
-    document.querySelectorAll(".highlightMove").forEach(s => s.classList.remove("highlightMove"))
     document.querySelectorAll(".highlight").forEach(s => s.classList.remove("highlight"))
+}
+
+function clearCheckHighlight() {
+    document.querySelectorAll(".check").forEach(s => s.classList.remove("check"))
+}
+
+/* ---------------- CHECK ---------------- */
+
+function highlightCheck(square) {
+    clearCheckHighlight()
+
+    let sq = convertFromSquare(square)
+
+    let target = document.querySelector(
+        `[data-row='${sq.row}'][data-col='${sq.col}']`
+    )
+
+    if (target) {
+        target.classList.add("check")
+    }
 }
 
 /* ---------------- PROMOTION ---------------- */
 
 function checkPromotion(from, to) {
-
     let fromRow = parseInt(from[0])
     let fromCol = from[1]
 
@@ -187,36 +239,17 @@ function checkPromotion(from, to) {
 
     let targetSquare = document.querySelector(`[data-row='${toRow}'][data-col='${toCol}'] img`)
 
-    // ---------------- WHITE PAWN ----------------
     if (src.includes("wp.png")) {
-
-        // Must reach last row
         if (toRow !== 0) return false
-
-        // Same column (forward move) → must be empty
-        if (fromCol === toCol) {
-            if (targetSquare) return false
-        }
-
-        // Diagonal move → must capture
-        else {
-            if (!targetSquare) return false
-        }
-
+        if (fromCol === toCol && targetSquare) return false
+        if (fromCol !== toCol && !targetSquare) return false
         return true
     }
 
-    // ---------------- BLACK PAWN ----------------
     if (src.includes("bp.png")) {
-
         if (toRow !== 7) return false
-
-        if (fromCol === toCol) {
-            if (targetSquare) return false
-        } else {
-            if (!targetSquare) return false
-        }
-
+        if (fromCol === toCol && targetSquare) return false
+        if (fromCol !== toCol && !targetSquare) return false
         return true
     }
 
@@ -260,17 +293,24 @@ function sendMove(from, to, promotion) {
             addMoveToHistory(move)
         }
 
-        if (data.check) highlightKing()
+        if (data.check) {
+            highlightCheck(data.check_square)
+        }
 
-        // ✅ FIXED LEVEL UNLOCK HERE ONLY
+        // ✅ GAME OVER → CHANGE THEME
         if (data.result) {
             clearInterval(timerInterval)
+
+            changeBoardTheme()
 
             if (gameMode === "ai" && data.result === "win") {
                 unlockNextLevel()
             }
 
-            window.location.href = "/result/" + data.result
+            setTimeout(() => {
+                window.location.href = "/result/" + data.result
+            }, 500)
+
             return
         }
 
@@ -279,15 +319,22 @@ function sendMove(from, to, promotion) {
                 fetch("/ai_move")
                 .then(res => res.json())
                 .then(aiData => {
+
                     drawBoard(aiData.fen)
                     moveSound.play()
                     addMoveToHistory("AI move")
 
-                    if (aiData.check) highlightKing()
+                    if (aiData.check) {
+                        highlightCheck(aiData.check_square)
+                    }
 
                     if (aiData.result) {
                         clearInterval(timerInterval)
-                        window.location.href = "/result/" + aiData.result
+                        changeBoardTheme()
+
+                        setTimeout(() => {
+                            window.location.href = "/result/" + aiData.result
+                        }, 500)
                     }
                 })
             }, 1200)
@@ -313,15 +360,6 @@ function addMoveToHistory(move) {
     historyList.scrollTop = historyList.scrollHeight
 }
 
-/* ---------------- CHECK ---------------- */
-
-function highlightKing() {
-    document.querySelectorAll(".check").forEach(s => s.classList.remove("check"))
-    document.querySelectorAll("img[src*='k.png']").forEach(k => {
-        k.parentElement.classList.add("check")
-    })
-}
-
 /* ---------------- CONVERTERS ---------------- */
 
 function convertToSquare(r, c) {
@@ -330,7 +368,7 @@ function convertToSquare(r, c) {
 
 function convertFromSquare(square) {
     return {
-        row: 8 - square[1],
+        row: 8 - parseInt(square[1]),
         col: files.indexOf(square[0])
     }
 }

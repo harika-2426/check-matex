@@ -74,35 +74,18 @@ box-shadow:0 0 10px rgba(0,0,0,0.6);
 
 }
 
-button:disabled{
-
-background-color:gray;
-cursor:not-allowed;
-transform:none;
-box-shadow:none;
-
-}
-
-.pvp-btn{
-background-color:#2ecc71;
-}
-
-.ai-btn{
-background-color:#e67e22;
-}
-
 /* ---------------- CHESS BOARD ---------------- */
 
 #board{
 
-width:480px;                 /* FIXED (multiple of 8) */
-height:480px;
+width:500px;
+height:500px;
 
 display:grid;
 grid-template-columns:repeat(8, 1fr);
 grid-template-rows:repeat(8, 1fr);
 
-gap:0;                       /* 🔥 IMPORTANT */
+gap:0;
 
 border:4px solid black;
 
@@ -114,35 +97,65 @@ margin:auto;
 
 .square{
 
-width:100%;                  /* FIXED */
+width:100%;
 height:100%;
 
 display:flex;
 align-items:center;
 justify-content:center;
 
+/* IMPORTANT for dot positioning */
+position:relative;
+
 }
 
 /* square colors */
 
-.white{
-background:#eee1e1;
-}
+.white{background:#e9edf1;}
 
-.black{
-background:#c2212100;          /* improved contrast */
-}
+.black{background:#6b7a8f;}
+.white.theme2 { background-color: #ecebe7; }
+.black.theme2 { background-color: #415cb1; }
 
-/* move highlight */
+.white.white.theme3 { background-color: #faf4f4;  }
+.black.black.theme3 { background-color: #46e1f2;  }
+
+.white.theme4 { background-color: #CDE7F0; }
+.black.theme4 { background-color: #2C6E91; }
+
+/* selected square */
 
 .highlight{
-outline:3px solid limegreen;
+outline:3px solid rgb(11, 7, 7);
 }
 
-/* chess pieces */
+/* ---------------- MOVE DOT (NEW) ---------------- */
+
+.moveDot{
+
+width:10px;
+height:10px;
+
+background-color:rgb(208, 249, 42);
+
+border-radius:50%;
+
+position:absolute;
+
+}
+
+/* ---------------- KING CHECK HIGHLIGHT (NEW) ---------------- */
+
+.check{
+
+box-shadow: inset 0 0 0 4px rgba(207, 40, 40, 0.763);
+
+}
+
+/* ---------------- CHESS PIECES ---------------- */
 
 .piece{
-width:80%;                   /* responsive */
+width:80%;
 cursor:grab;
 user-select:none;
 }

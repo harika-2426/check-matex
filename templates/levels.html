@@ -3,7 +3,7 @@
 
 <head>
 <title>Select Level</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
@@ -14,7 +14,7 @@
 <div class="levelsContainer">
 
 <!-- Loop through levels 1 to 5 -->
-{% for i in range(1,6) %}
+{% for i in range(1,8) %}
 
 {% if i <= unlocked %}
 
@@ -40,7 +40,7 @@ Level {{i}}
 let unlockedLevel = parseInt(localStorage.getItem("unlockedLevel")) || 1
 
 // Enable only unlocked levels
-for(let i=1; i<=5; i++){
+for(let i=1; i<=7; i++){
     let btn = document.getElementById("level"+i)
     if(btn){
         if(i <= unlockedLevel){

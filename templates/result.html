@@ -2,114 +2,94 @@
 <html>
 
 <head>
-
-<title>Game Result</title>
-
-<link rel="stylesheet" href="/static/style.css">
-
+    <title>Game Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
 
 <h1>Game Result</h1>
 
-<!-- RESULT MESSAGE -->
+<!-- ================= RESULT DISPLAY ================= -->
 
-{% if result == "win" %}
+{% if mode == "pvp" %}
 
-<h2>🏆 You Win!</h2>
+    {% if result == "checkmate" %}
+        <h2>♔ {{ winner }} Wins!</h2>
+    {% elif result == "draw" %}
+        <h2>🤝 Draw</h2>
+    {% else %}
+        <h2>{{ result }}</h2>
+    {% endif %}
 
-<div id="aiButtons">
-
-<button onclick="nextLevel()">Next Level</button>
-
-<button onclick="retry()">Play Again</button>
-
-</div>
-
-{% elif result == "lose" %}
-
-<h2>❌ You Lose</h2>
-
-<button onclick="retry()">Retry</button>
-
-{% elif result == "draw" %}
-
-<h2>🤝 Draw</h2>
-
-<button onclick="retry()">Play Again</button>
-
-{% elif result == "checkmate" %}
-
-<h2>♟ Checkmate!</h2>
-
-<button onclick="retry()">Play Again</button>
+    <button onclick="playAgainPVP()">Play Again</button>
 
 {% else %}
 
-<h2>{{result}}</h2>
+    {% if result == "win" %}
+        <h2>🏆 You Win!</h2>
+
+        <button onclick="nextLevel()">Next Level</button>
+        <button onclick="retryAI()">Play Again</button>
+
+    {% elif result == "lose" %}
+        <h2>❌ You Lose</h2>
+        <button onclick="retryAI()">Retry</button>
+
+    {% elif result == "draw" %}
+        <h2>🤝 Draw</h2>
+        <button onclick="retryAI()">Play Again</button>
+
+    {% else %}
+        <h2>{{ result }}</h2>
+        <button onclick="retryAI()">Retry</button>
+    {% endif %}
 
 {% endif %}
 
 <br><br>
 
-<div id="pvpButtons" style="display:none">
-
-<button onclick="playAgain()">Play Again</button>
-
-</div>
-
 <button onclick="home()">Home</button>
+
+<!-- ================= SCRIPT ================= -->
 
 <script>
 
-let mode = localStorage.getItem("mode")
+// GET VALUES FROM BACKEND OR LOCALSTORAGE
+let mode = "{{ mode }}"
 let level = parseInt(localStorage.getItem("level")) || 1
 let unlocked = parseInt(localStorage.getItem("unlockedLevel")) || 1
 
-// PLAYER VS PLAYER BUTTON
-if(mode === "pvp"){
-document.getElementById("pvpButtons").style.display = "block"
+// ================= PVP PLAY AGAIN FIX =================
+function playAgainPVP(){
+    window.location.href = "/game/pvp/1"
 }
 
-// NEXT LEVEL FUNCTION
+// ================= AI RETRY =================
+function retryAI(){
+    window.location.href = `/game/ai/${level}`
+}
+
+// ================= NEXT LEVEL =================
 function nextLevel(){
 
-let next = level + 1
+    let next = level + 1
 
-if(next > unlocked){
-localStorage.setItem("unlockedLevel", next)
+    if(next > unlocked){
+        localStorage.setItem("unlockedLevel", next)
+    }
+
+    localStorage.setItem("level", next)
+
+    window.location.href = `/levels`
 }
 
-localStorage.setItem("level", next)
-
-window.location.href="/levels"
-
-}
-
-// RETRY GAME
-function retry(){
-
-window.location.href="/game"
-
-}
-
-// PLAY AGAIN FOR PVP
-function playAgain(){
-
-window.location.href="/game"
-
-}
-
-// GO HOME
+// ================= HOME =================
 function home(){
-
-window.location.href="/"
-
+    window.location.href = "/"
 }
 
 </script>
 
 </body>
-
 </html>
