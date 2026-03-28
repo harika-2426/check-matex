@@ -11,7 +11,6 @@ let moveSound = new Audio("/static/sounds/move_sound.wav")
 let gameMode = window.location.pathname.includes("ai") ? "ai" : "pvp"
 
 let pendingPromotion = null
-
 let currentTheme = parseInt(localStorage.getItem("boardTheme")) || 1
 
 /* ---------------- TIMER ---------------- */
@@ -37,7 +36,6 @@ function startTimer() {
             alert("Time Over")
             window.location.href = "/result/draw"
         }
-
     }, 1000)
 }
 
@@ -48,7 +46,7 @@ let pieces = {
     "R": "wr.png", "N": "wn.png", "B": "wb.png", "Q": "wq.png", "K": "wk.png", "P": "wp.png"
 }
 
-/* ---------------- DRAW BOARD ---------------- */
+/* ---------------- BOARD ---------------- */
 
 function drawBoard(fen) {
     boardDiv.innerHTML = ""
@@ -99,10 +97,10 @@ function createSquare(r, c, piece) {
     boardDiv.appendChild(square)
 }
 
-/* ---------------- CLEAR ---------------- */
+/* ---------------- CLEANERS ---------------- */
 
 function clearDots() {
-    document.querySelectorAll(".moveDot").forEach(dot => dot.remove())
+    document.querySelectorAll(".moveDot").forEach(d => d.remove())
 }
 
 function clearHighlights() {
@@ -113,11 +111,11 @@ function clearCheckHighlight() {
     document.querySelectorAll(".check").forEach(s => s.classList.remove("check"))
 }
 
-/* ---------------- SAFE CHECK HIGHLIGHT (FIXED) ---------------- */
+/* ---------------- SAFE CHECK HIGHLIGHT ---------------- */
 
 function highlightCheck(square) {
     try {
-        if (!square) return   // 🔥 IMPORTANT FIX
+        if (!square) return
 
         clearCheckHighlight()
 
@@ -128,15 +126,13 @@ function highlightCheck(square) {
             `[data-row='${sq.row}'][data-col='${sq.col}']`
         )
 
-        if (target) {
-            target.classList.add("check")
-        }
+        if (target) target.classList.add("check")
     } catch (e) {
-        console.log("Check highlight error:", e)
+        console.log("check error:", e)
     }
 }
 
-/* ---------------- SELECT ---------------- */
+/* ---------------- SELECT SQUARE (FIXED CORE BUG) ---------------- */
 
 function selectSquare() {
     clearHighlights()
@@ -144,8 +140,9 @@ function selectSquare() {
 
     let piece = this.querySelector("img")
 
-    if (selected == null) {
+    if (!selected) {
         if (!piece) return
+
         selected = this
         this.classList.add("highlight")
 
@@ -154,7 +151,7 @@ function selectSquare() {
         fetch("/legal_moves/" + squareName)
             .then(res => res.json())
             .then(data => {
-                if (!data || !data.moves) return   // 🔥 FIX
+                if (!data || !Array.isArray(data.moves)) return
 
                 data.moves.forEach(move => {
                     let sq = convertFromSquare(move)
@@ -169,6 +166,7 @@ function selectSquare() {
                     }
                 })
             })
+            .catch(err => console.log("legal move error:", err))
 
     } else {
         let from = selected.dataset.row + selected.dataset.col
@@ -176,6 +174,8 @@ function selectSquare() {
 
         selected.classList.remove("highlight")
         selected = null
+
+        if (!from || !to) return
 
         movePiece(from, to)
     }
@@ -189,10 +189,11 @@ function movePiece(from, to) {
         document.getElementById("promotionBox").style.display = "flex"
         return
     }
+
     sendMove(from, to, null)
 }
 
-/* ---------------- SEND MOVE (FIXED SAFETY) ---------------- */
+/* ---------------- SEND MOVE (FULL SAFE) ---------------- */
 
 function sendMove(from, to, promotion) {
     let move = convertMove(from, to)
@@ -206,8 +207,7 @@ function sendMove(from, to, promotion) {
     .then(res => res.json())
     .then(data => {
 
-        if (!data) return   // 🔥 FIX
-
+        if (!data) return
         if (data.error) return
 
         if (data.fen) {
@@ -227,41 +227,42 @@ function sendMove(from, to, promotion) {
             setTimeout(() => {
                 window.location.href = "/result/" + data.result
             }, 500)
-
             return
         }
 
         if (gameMode === "ai") {
             setTimeout(() => {
                 fetch("/ai_move")
-                .then(res => res.json())
-                .then(aiData => {
+                    .then(res => res.json())
+                    .then(aiData => {
 
-                    if (!aiData) return   // 🔥 FIX
+                        if (!aiData) return
 
-                    drawBoard(aiData.fen)
-                    moveSound.play()
-                    addMoveToHistory("AI move")
+                        drawBoard(aiData.fen)
+                        moveSound.play()
+                        addMoveToHistory("AI move")
 
-                    if (aiData.check && aiData.check_square) {
-                        highlightCheck(aiData.check_square)
-                    }
+                        if (aiData.check && aiData.check_square) {
+                            highlightCheck(aiData.check_square)
+                        }
 
-                    if (aiData.result) {
-                        clearInterval(timerInterval)
-                        changeBoardTheme()
+                        if (aiData.result) {
+                            clearInterval(timerInterval)
+                            changeBoardTheme()
 
-                        setTimeout(() => {
-                            window.location.href = "/result/" + aiData.result
-                        }, 500)
-                    }
-                })
+                            setTimeout(() => {
+                                window.location.href = "/result/" + aiData.result
+                            }, 500)
+                        }
+                    })
+                    .catch(err => console.log("AI error:", err))
             }, 1200)
         }
     })
+    .catch(err => console.log("move error:", err))
 }
 
-/* ---------------- REST SAME ---------------- */
+/* ---------------- CONVERTERS ---------------- */
 
 function convertMove(from, to) {
     return files[from[1]] + (8 - from[0]) + files[to[1]] + (8 - to[0])
@@ -272,19 +273,24 @@ function convertToSquare(r, c) {
 }
 
 function convertFromSquare(square) {
+    if (!square || square.length < 2) return null
+
     return {
         row: 8 - parseInt(square[1]),
         col: files.indexOf(square[0])
     }
 }
 
+/* ---------------- HISTORY ---------------- */
+
 function addMoveToHistory(move) {
     if (!historyList) return
     let item = document.createElement("li")
     item.innerText = move
     historyList.appendChild(item)
-    historyList.scrollTop = historyList.scrollHeight
 }
+
+/* ---------------- THEME ---------------- */
 
 function changeBoardTheme() {
     currentTheme++
@@ -292,14 +298,21 @@ function changeBoardTheme() {
     localStorage.setItem("boardTheme", currentTheme)
 }
 
+/* ---------------- NEW GAME ---------------- */
+
 function newGame() {
     fetch("/new_game")
-    .then(res => res.json())
-    .then(data => {
-        drawBoard(data.fen)
-        startTimer()
-    })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.fen) {
+                drawBoard(data.fen)
+                startTimer()
+            }
+        })
+        .catch(err => console.log("new game error:", err))
 }
+
+/* ---------------- INIT ---------------- */
 
 if (boardDiv) {
     newGame()
