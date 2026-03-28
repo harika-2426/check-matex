@@ -1,10 +1,12 @@
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# ---------------- CONNECT ---------------- #
 def connect():
     return sqlite3.connect("users.db")
 
 
+# ---------------- INIT DB ---------------- #
 def init_db():
     conn = connect()
     c = conn.cursor()
@@ -22,7 +24,7 @@ def init_db():
     conn.close()
 
 
-# 🔐 REGISTER USER (HASHED PASSWORD)
+# ---------------- REGISTER USER ---------------- #
 def create_user(username, password):
     conn = connect()
     c = conn.cursor()
@@ -43,7 +45,7 @@ def create_user(username, password):
     return True
 
 
-# 🔑 LOGIN USER (CHECK HASH)
+# ---------------- LOGIN USER ---------------- #
 def get_user(username, password):
     conn = connect()
     c = conn.cursor()
@@ -62,7 +64,7 @@ def get_user(username, password):
     return None
 
 
-# 🎮 GET USER LEVEL
+# ---------------- GET LEVEL ---------------- #
 def get_level(username):
     conn = connect()
     c = conn.cursor()
@@ -77,10 +79,11 @@ def get_level(username):
 
     if result:
         return result[0]
-    return 1  
+
+    return 1
 
 
-# 🏆 UPDATE LEVEL
+# ---------------- UNLOCK LEVEL ---------------- #
 def unlock_level(username, new_level):
     conn = connect()
     c = conn.cursor()

@@ -99,7 +99,7 @@ def ai_move():
 
     return best_move
 
-# =================== AUTH =================== #
+# =================== PAGES =================== #
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -137,7 +137,6 @@ def logout():
     session.pop("user", None)
     return redirect("/")
 
-# =================== PAGES =================== #
 
 @app.route("/")
 def home():
