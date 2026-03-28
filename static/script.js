@@ -99,20 +99,41 @@ function createSquare(r, c, piece) {
     boardDiv.appendChild(square)
 }
 
-/* ---------------- THEME CHANGE ---------------- */
-
-function changeBoardTheme() {
-    currentTheme++
-
-    if (currentTheme > 4) currentTheme = 1
-
-    localStorage.setItem("boardTheme", currentTheme)
-}
-
-/* ---------------- DOT SYSTEM ---------------- */
+/* ---------------- CLEAR ---------------- */
 
 function clearDots() {
     document.querySelectorAll(".moveDot").forEach(dot => dot.remove())
+}
+
+function clearHighlights() {
+    document.querySelectorAll(".highlight").forEach(s => s.classList.remove("highlight"))
+}
+
+function clearCheckHighlight() {
+    document.querySelectorAll(".check").forEach(s => s.classList.remove("check"))
+}
+
+/* ---------------- SAFE CHECK HIGHLIGHT (FIXED) ---------------- */
+
+function highlightCheck(square) {
+    try {
+        if (!square) return   // 🔥 IMPORTANT FIX
+
+        clearCheckHighlight()
+
+        let sq = convertFromSquare(square)
+        if (!sq) return
+
+        let target = document.querySelector(
+            `[data-row='${sq.row}'][data-col='${sq.col}']`
+        )
+
+        if (target) {
+            target.classList.add("check")
+        }
+    } catch (e) {
+        console.log("Check highlight error:", e)
+    }
 }
 
 /* ---------------- SELECT ---------------- */
@@ -133,6 +154,8 @@ function selectSquare() {
         fetch("/legal_moves/" + squareName)
             .then(res => res.json())
             .then(data => {
+                if (!data || !data.moves) return   // 🔥 FIX
+
                 data.moves.forEach(move => {
                     let sq = convertFromSquare(move)
                     let target = document.querySelector(
@@ -158,69 +181,7 @@ function selectSquare() {
     }
 }
 
-/* ---------------- CLEAR ---------------- */
-
-function clearHighlights() {
-    document.querySelectorAll(".highlight").forEach(s => s.classList.remove("highlight"))
-}
-
-function clearCheckHighlight() {
-    document.querySelectorAll(".check").forEach(s => s.classList.remove("check"))
-}
-
-/* ---------------- CHECK ---------------- */
-
-function highlightCheck(square) {
-    clearCheckHighlight()
-
-    let sq = convertFromSquare(square)
-
-    let target = document.querySelector(
-        `[data-row='${sq.row}'][data-col='${sq.col}']`
-    )
-
-    if (target) {
-        target.classList.add("check")
-    }
-}
-
-/* ---------------- PROMOTION ---------------- */
-
-function checkPromotion(from, to) {
-    let fromRow = parseInt(from[0])
-    let fromCol = from[1]
-
-    let piece = document.querySelector(`[data-row='${fromRow}'][data-col='${fromCol}'] img`)
-    if (!piece) return false
-
-    let src = piece.src
-    let toRow = parseInt(to[0])
-    let toCol = to[1]
-
-    let targetSquare = document.querySelector(`[data-row='${toRow}'][data-col='${toCol}'] img`)
-
-    if (src.includes("wp.png")) {
-        if (toRow !== 0) return false
-        if (fromCol === toCol && targetSquare) return false
-        if (fromCol !== toCol && !targetSquare) return false
-        return true
-    }
-
-    if (src.includes("bp.png")) {
-        if (toRow !== 7) return false
-        if (fromCol === toCol && targetSquare) return false
-        if (fromCol !== toCol && !targetSquare) return false
-        return true
-    }
-
-    return false
-}
-
 /* ---------------- MOVE ---------------- */
-
-function convertMove(from, to) {
-    return files[from[1]] + (8 - from[0]) + files[to[1]] + (8 - to[0])
-}
 
 function movePiece(from, to) {
     if (checkPromotion(from, to)) {
@@ -231,7 +192,7 @@ function movePiece(from, to) {
     sendMove(from, to, null)
 }
 
-/* ---------------- SEND MOVE ---------------- */
+/* ---------------- SEND MOVE (FIXED SAFETY) ---------------- */
 
 function sendMove(from, to, promotion) {
     let move = convertMove(from, to)
@@ -245,6 +206,8 @@ function sendMove(from, to, promotion) {
     .then(res => res.json())
     .then(data => {
 
+        if (!data) return   // 🔥 FIX
+
         if (data.error) return
 
         if (data.fen) {
@@ -253,13 +216,12 @@ function sendMove(from, to, promotion) {
             addMoveToHistory(move)
         }
 
-        if (data.check) {
+        if (data.check && data.check_square) {
             highlightCheck(data.check_square)
         }
 
         if (data.result) {
             clearInterval(timerInterval)
-
             changeBoardTheme()
 
             setTimeout(() => {
@@ -275,11 +237,13 @@ function sendMove(from, to, promotion) {
                 .then(res => res.json())
                 .then(aiData => {
 
+                    if (!aiData) return   // 🔥 FIX
+
                     drawBoard(aiData.fen)
                     moveSound.play()
                     addMoveToHistory("AI move")
 
-                    if (aiData.check) {
+                    if (aiData.check && aiData.check_square) {
                         highlightCheck(aiData.check_square)
                     }
 
@@ -297,25 +261,11 @@ function sendMove(from, to, promotion) {
     })
 }
 
-/* ---------------- PROMOTION ---------------- */
+/* ---------------- REST SAME ---------------- */
 
-function promote(piece) {
-    document.getElementById("promotionBox").style.display = "none"
-    sendMove(pendingPromotion.from, pendingPromotion.to, piece)
-    pendingPromotion = null
+function convertMove(from, to) {
+    return files[from[1]] + (8 - from[0]) + files[to[1]] + (8 - to[0])
 }
-
-/* ---------------- HISTORY ---------------- */
-
-function addMoveToHistory(move) {
-    if (!historyList) return
-    let item = document.createElement("li")
-    item.innerText = move
-    historyList.appendChild(item)
-    historyList.scrollTop = historyList.scrollHeight
-}
-
-/* ---------------- CONVERTERS ---------------- */
 
 function convertToSquare(r, c) {
     return files[c] + (8 - r)
@@ -328,7 +278,19 @@ function convertFromSquare(square) {
     }
 }
 
-/* ---------------- NEW GAME ---------------- */
+function addMoveToHistory(move) {
+    if (!historyList) return
+    let item = document.createElement("li")
+    item.innerText = move
+    historyList.appendChild(item)
+    historyList.scrollTop = historyList.scrollHeight
+}
+
+function changeBoardTheme() {
+    currentTheme++
+    if (currentTheme > 4) currentTheme = 1
+    localStorage.setItem("boardTheme", currentTheme)
+}
 
 function newGame() {
     fetch("/new_game")
@@ -338,8 +300,6 @@ function newGame() {
         startTimer()
     })
 }
-
-/* ---------------- INIT ---------------- */
 
 if (boardDiv) {
     newGame()
