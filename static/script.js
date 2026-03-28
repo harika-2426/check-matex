@@ -9,39 +9,10 @@ let timerInterval
 let moveSound = new Audio("/static/sounds/move_sound.wav")
 
 let gameMode = window.location.pathname.includes("ai") ? "ai" : "pvp"
-localStorage.setItem("mode", gameMode)
 
 let pendingPromotion = null
 
-const MAX_LEVEL = 10
-
-// ✅ THEME SYSTEM (FIXED - PERSISTENT)
 let currentTheme = parseInt(localStorage.getItem("boardTheme")) || 1
-
-if (!localStorage.getItem("unlockedLevel")) {
-    localStorage.setItem("unlockedLevel", "1")
-}
-if (!localStorage.getItem("currentLevel")) {
-    localStorage.setItem("currentLevel", "1")
-}
-
-function getCurrentLevel() {
-    return parseInt(localStorage.getItem("currentLevel")) || 1
-}
-
-function getUnlockedLevel() {
-    return parseInt(localStorage.getItem("unlockedLevel")) || 1
-}
-
-function unlockNextLevel() {
-    let current = getCurrentLevel()
-    let unlocked = getUnlockedLevel()
-
-    if (current === unlocked && unlocked < MAX_LEVEL) {
-        localStorage.setItem("unlockedLevel", unlocked + 1)
-        console.log("✅ Level Unlocked:", unlocked + 1)
-    }
-}
 
 /* ---------------- TIMER ---------------- */
 
@@ -110,9 +81,9 @@ function createSquare(r, c, piece) {
     let baseColor = (r + c) % 2 == 0 ? "white" : "black"
     square.classList.add(baseColor)
 
-    // ✅ APPLY THEME (FIXED)
     if (currentTheme === 2) square.classList.add("theme2")
     if (currentTheme === 3) square.classList.add("theme3")
+    if (currentTheme === 4) square.classList.add("theme4")
 
     square.dataset.row = r
     square.dataset.col = c
@@ -133,20 +104,9 @@ function createSquare(r, c, piece) {
 function changeBoardTheme() {
     currentTheme++
 
-    if (currentTheme > 3) currentTheme = 1
+    if (currentTheme > 4) currentTheme = 1
 
     localStorage.setItem("boardTheme", currentTheme)
-
-    drawBoardFromServer()
-}
-
-// helper to redraw from backend
-function drawBoardFromServer() {
-    fetch("/current_fen")
-        .then(res => res.json())
-        .then(data => {
-            drawBoard(data.fen)
-        })
 }
 
 /* ---------------- DOT SYSTEM ---------------- */
@@ -297,15 +257,10 @@ function sendMove(from, to, promotion) {
             highlightCheck(data.check_square)
         }
 
-        // ✅ GAME OVER → CHANGE THEME
         if (data.result) {
             clearInterval(timerInterval)
 
             changeBoardTheme()
-
-            if (gameMode === "ai" && data.result === "win") {
-                unlockNextLevel()
-            }
 
             setTimeout(() => {
                 window.location.href = "/result/" + data.result
@@ -342,7 +297,7 @@ function sendMove(from, to, promotion) {
     })
 }
 
-/* ---------------- PROMOTION SELECT ---------------- */
+/* ---------------- PROMOTION ---------------- */
 
 function promote(piece) {
     document.getElementById("promotionBox").style.display = "none"

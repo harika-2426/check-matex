@@ -1,46 +1,94 @@
 import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+
+def connect():
+    return sqlite3.connect("users.db")
+
 
 def init_db():
-
-    conn = sqlite3.connect("progress.db")
+    conn = connect()
     c = conn.cursor()
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS progress(
-        id INTEGER PRIMARY KEY,
-        unlocked INTEGER
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT,
+        unlocked_level INTEGER DEFAULT 1
     )
     """)
-
-    c.execute("SELECT * FROM progress")
-
-    if c.fetchone() is None:
-        c.execute("INSERT INTO progress VALUES(1,1)")
 
     conn.commit()
     conn.close()
 
 
-def get_level():
-
-    conn = sqlite3.connect("progress.db")
+# 🔐 REGISTER USER (HASHED PASSWORD)
+def create_user(username, password):
+    conn = connect()
     c = conn.cursor()
 
-    c.execute("SELECT unlocked FROM progress WHERE id=1")
+    hashed_password = generate_password_hash(password)
 
-    level = c.fetchone()[0]
+    try:
+        c.execute(
+            "INSERT INTO users (username, password) VALUES (?, ?)",
+            (username, hashed_password)
+        )
+        conn.commit()
+    except:
+        conn.close()
+        return False
 
     conn.close()
+    return True
 
-    return level
 
-
-def unlock_level():
-
-    conn = sqlite3.connect("progress.db")
+# 🔑 LOGIN USER (CHECK HASH)
+def get_user(username, password):
+    conn = connect()
     c = conn.cursor()
 
-    c.execute("UPDATE progress SET unlocked = unlocked + 1 WHERE id=1")
+    c.execute(
+        "SELECT * FROM users WHERE username=?",
+        (username,)
+    )
+
+    user = c.fetchone()
+    conn.close()
+
+    if user and check_password_hash(user[2], password):
+        return user
+
+    return None
+
+
+# 🎮 GET USER LEVEL
+def get_level(username):
+    conn = connect()
+    c = conn.cursor()
+
+    c.execute(
+        "SELECT unlocked_level FROM users WHERE username=?",
+        (username,)
+    )
+
+    result = c.fetchone()
+    conn.close()
+
+    if result:
+        return result[0]
+    return 1  
+
+
+# 🏆 UPDATE LEVEL
+def unlock_level(username, new_level):
+    conn = connect()
+    c = conn.cursor()
+
+    c.execute(
+        "UPDATE users SET unlocked_level=? WHERE username=?",
+        (new_level, username)
+    )
 
     conn.commit()
     conn.close()
