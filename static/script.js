@@ -1,224 +1,254 @@
-/* ================= AUTH + NAVIGATION ================= */
+let boardDiv = document.getElementById("board")
+let selected = null
+let files = "abcdefgh"
+let historyList = document.getElementById("history")
 
-// ⚠️ Still NOT secure (frontend-only auth)
-function goToLogin() {
-    window.location.href = "/login";
+let time = 600
+let timerInterval
+
+let moveSound = new Audio("/static/sounds/move_sound.wav")
+
+let gameMode = window.location.pathname.includes("ai") ? "ai" : "pvp"
+localStorage.setItem("mode", gameMode)
+
+let pendingPromotion = null
+
+const MAX_LEVEL = 10
+
+if (!localStorage.getItem("unlockedLevel")) {
+    localStorage.setItem("unlockedLevel", "1")
+}
+if (!localStorage.getItem("currentLevel")) {
+    localStorage.setItem("currentLevel", "1")
 }
 
-function goToRegister() {
-    window.location.href = "/register";
+// ---------------- LEVEL FUNCTIONS ----------------
+function getCurrentLevel() {
+    return parseInt(localStorage.getItem("currentLevel")) || 1
 }
 
-function registerUser(e) {
-    e.preventDefault();
+function getUnlockedLevel() {
+    return parseInt(localStorage.getItem("unlockedLevel")) || 1
+}
 
-    let username = document.getElementById("regUsername").value.trim();
-    let password = document.getElementById("regPassword").value.trim();
+function unlockNextLevel() {
+    let current = getCurrentLevel()
+    let unlocked = getUnlockedLevel()
 
-    if (!username || !password) {
-        alert("Please fill all fields");
-        return;
+    if (current === unlocked && unlocked < MAX_LEVEL) {
+        localStorage.setItem("unlockedLevel", unlocked + 1)
+        console.log(" Level Unlocked:", unlocked + 1)
     }
-
-    localStorage.setItem("user", JSON.stringify({ username, password }));
-
-    alert("Registered successfully! Now login.");
-    window.location.href = "/login";
 }
 
-function loginUser(e) {
-    e.preventDefault();
+// ---------------- BOARD THEMES ----------------
+const boardThemes = [
+    { light: "#ced1d1", dark: "#5e90bb" }, // classic
+    { light: "#f3f3f3", dark: "#5f5f5f" }, // gray
+    { light: "#c6e2ff", dark: "#2bada4" }, // blue
+    { light: "#cccccb", dark: "#2e2cb3df" }, // peach
+    { light: "#e9edf1", dark: "#6b7a8f" }, // green
+]
 
-    let username = document.getElementById("loginUsername").value.trim();
-    let password = document.getElementById("loginPassword").value.trim();
-
-    let storedUser = JSON.parse(localStorage.getItem("user"));
-
-    if (storedUser && username === storedUser.username && password === storedUser.password) {
-        alert("Login successful!");
-        window.location.href = "/mode";
-    } else {
-        alert("Invalid credentials!");
-    }
+function getNextTheme() {
+    let current = parseInt(localStorage.getItem("boardThemeIndex")) || 0
+    let next = (current + 1) % boardThemes.length
+    localStorage.setItem("boardThemeIndex", next)
+    return boardThemes[next]
 }
 
-/* ================= GAME ================= */
-
-let boardDiv = document.getElementById("board");
-let selected = null;
-let files = "abcdefgh";
-let historyList = document.getElementById("history");
-
-let time = 1800;
-let timerInterval;
-let gameOver = false;
-
-let moveSound = new Audio("/static/sounds/move_sound.wav");
-
-let gameMode = window.location.pathname.includes("ai") ? "ai" : "pvp";
-
-let pendingPromotion = null;
-
-const MAX_LEVEL = 10;
-
-let currentTheme = parseInt(localStorage.getItem("boardTheme")) || 1;
-
-/* ---------------- RESET UI ---------------- */
-
-function resetUI() {
-    selected = null;
-    clearHighlights();
-    clearDots();
+function getCurrentTheme() {
+    let idx = parseInt(localStorage.getItem("boardThemeIndex")) || 0
+    return boardThemes[idx]
 }
 
 /* ---------------- TIMER ---------------- */
-
 function startTimer() {
-    clearInterval(timerInterval);
-    time = 1800;
+    clearInterval(timerInterval)
+    time = 600
 
     timerInterval = setInterval(() => {
-        if (gameOver) return;
+        time--
+        let minutes = Math.floor(time / 60)
+        let seconds = time % 60
+        let timer = document.getElementById("timer")
 
-        time--;
-
-        let m = Math.floor(time / 60);
-        let s = time % 60;
-
-        let timer = document.getElementById("timer");
-        if (timer) timer.innerText = `${m}:${s < 10 ? "0" : ""}${s}`;
+        if (timer) {
+            timer.innerText = minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+        }
 
         if (time <= 0) {
-            gameOver = true;
-            clearInterval(timerInterval);
-            window.location.href = "/result/draw";
+            clearInterval(timerInterval)
+            alert("Time Over")
+            window.location.href = "/result/draw"
         }
-    }, 1000);
+
+    }, 1000)
 }
 
 /* ---------------- PIECES ---------------- */
-
 let pieces = {
-    r: "br.png", n: "bn.png", b: "bb.png", q: "bq.png", k: "bk.png", p: "bp.png",
-    R: "wr.png", N: "wn.png", B: "wb.png", Q: "wq.png", K: "wk.png", P: "wp.png"
-};
+    "r": "br.png", "n": "bn.png", "b": "bb.png", "q": "bq.png", "k": "bk.png", "p": "bp.png",
+    "R": "wr.png", "N": "wn.png", "B": "wb.png", "Q": "wq.png", "K": "wk.png", "P": "wp.png"
+}
 
-/* ---------------- BOARD ---------------- */
-
+/* ---------------- DRAW BOARD ---------------- */
 function drawBoard(fen) {
-    if (!boardDiv) return;
+    boardDiv.innerHTML = ""
+    clearCheckHighlight()
 
-    boardDiv.innerHTML = "";
-    resetUI();
-
-    let rows = fen.split(" ")[0].split("/");
-
+    let rows = fen.split(" ")[0].split("/")
     for (let r = 0; r < 8; r++) {
-        let col = 0;
-
-        for (let ch of rows[r]) {
-            if (!isNaN(ch)) {
-                for (let i = 0; i < ch; i++) {
-                    createSquare(r, col, null);
-                    col++;
+        let col = 0
+        for (let char of rows[r]) {
+            if (!isNaN(char)) {
+                for (let i = 0; i < char; i++) {
+                    createSquare(r, col, null)
+                    col++
                 }
             } else {
-                createSquare(r, col, ch);
-                col++;
+                createSquare(r, col, char)
+                col++
             }
         }
     }
 }
 
-/* ---------------- SQUARE ---------------- */
-
+/* ---------------- CREATE SQUARE ---------------- */
 function createSquare(r, c, piece) {
-    let square = document.createElement("div");
-    square.classList.add("square");
+    let square = document.createElement("div")
+    square.classList.add("square")
 
-    square.classList.add((r + c) % 2 === 0 ? "white" : "black");
+    // Apply current theme colors
+    let theme = getCurrentTheme()
+    let isLight = (r + c) % 2 == 0
+    square.style.backgroundColor = isLight ? theme.light : theme.dark
 
-    if (currentTheme === 2) square.classList.add("theme2");
-    if (currentTheme === 3) square.classList.add("theme3");
-    if (currentTheme === 4) square.classList.add("theme4");
-
-    square.dataset.row = r;
-    square.dataset.col = c;
-    square.onclick = selectSquare;
+    square.dataset.row = r
+    square.dataset.col = c
+    square.onclick = selectSquare
 
     if (piece) {
-        let img = document.createElement("img");
-        img.src = "/static/pieces/" + pieces[piece];
-        img.classList.add("piece");
-        square.appendChild(img);
+        let img = document.createElement("img")
+        img.src = "/static/pieces/" + pieces[piece]
+        img.classList.add("piece")
+        square.appendChild(img)
     }
 
-    boardDiv.appendChild(square);
+    boardDiv.appendChild(square)
+}
+
+/* ---------------- DOT SYSTEM ---------------- */
+function clearDots() {
+    document.querySelectorAll(".moveDot").forEach(dot => dot.remove())
 }
 
 /* ---------------- SELECT ---------------- */
-
 function selectSquare() {
-    if (gameOver) return;
+    clearHighlights()
+    clearDots()
 
-    clearHighlights();
-    clearDots();
+    let piece = this.querySelector("img")
 
-    let piece = this.querySelector("img");
+    if (selected == null) {
+        if (!piece) return
+        selected = this
+        this.classList.add("highlight")
 
-    if (!selected) {
-        if (!piece) return;
+        let squareName = convertToSquare(this.dataset.row, this.dataset.col)
 
-        selected = this;
-        this.classList.add("highlight");
-
-        let squareName = convertToSquare(this.dataset.row, this.dataset.col);
-
-        fetch(`/legal_moves/${squareName}`)
+        fetch("/legal_moves/" + squareName)
             .then(res => res.json())
             .then(data => {
-                if (!data.moves) return;
-
-                data.moves.forEach(m => {
-                    let sq = convertFromSquare(m);
-
+                data.moves.forEach(move => {
+                    let sq = convertFromSquare(move)
                     let target = document.querySelector(
                         `[data-row='${sq.row}'][data-col='${sq.col}']`
-                    );
-
+                    )
                     if (target) {
-                        let dot = document.createElement("div");
-                        dot.classList.add("moveDot");
-                        target.appendChild(dot);
+                        let dot = document.createElement("div")
+                        dot.classList.add("moveDot")
+                        target.appendChild(dot)
                     }
-                });
+                })
             })
-            .catch(err => console.error("Legal move error:", err));
 
     } else {
-        let from = selected.dataset.row + selected.dataset.col;
-        let to = this.dataset.row + this.dataset.col;
+        let from = selected.dataset.row + selected.dataset.col
+        let to = this.dataset.row + this.dataset.col
 
-        selected = null;
-        movePiece(from, to);
+        selected.classList.remove("highlight")
+        selected = null
+
+        movePiece(from, to)
     }
 }
 
+/* ---------------- CLEAR ---------------- */
+function clearHighlights() {
+    document.querySelectorAll(".highlight").forEach(s => s.classList.remove("highlight"))
+}
+
+function clearCheckHighlight() {
+    document.querySelectorAll(".check").forEach(s => s.classList.remove("check"))
+}
+
+/* ---------------- CHECK HIGHLIGHT ---------------- */
+function highlightCheck(square) {
+    clearCheckHighlight()
+    let sq = convertFromSquare(square)
+    let target = document.querySelector(`[data-row='${sq.row}'][data-col='${sq.col}']`)
+    if (target) target.classList.add("check")
+}
+
+/* ---------------- PROMOTION ---------------- */
+function checkPromotion(from, to) {
+    let fromRow = parseInt(from[0])
+    let fromCol = parseInt(from[1])
+    let toRow = parseInt(to[0])
+    let toCol = parseInt(to[1])
+
+    let piece = document.querySelector(`[data-row='${fromRow}'][data-col='${fromCol}'] img`)
+    if (!piece) return false
+
+    // White pawn promotion
+    if (piece.src.includes("wp.png")) {
+        if (fromRow === 1 && toRow === 0) { // second-to-last row to last row
+            // Check move is straight or diagonal capture
+            if (Math.abs(toCol - fromCol) <= 1) return true
+        }
+        return false
+    }
+
+    // Black pawn promotion
+    if (piece.src.includes("bp.png")) {
+        if (fromRow === 6 && toRow === 7) { // second-to-last row to last row
+            if (Math.abs(toCol - fromCol) <= 1) return true
+        }
+        return false
+    }
+
+    return false
+}
+
 /* ---------------- MOVE ---------------- */
+function convertMove(from, to) {
+    return files[from[1]] + (8 - from[0]) + files[to[1]] + (8 - to[0])
+}
 
 function movePiece(from, to) {
-    if (gameOver) return;
-
-    sendMove(from, to, null);
+    if (checkPromotion(from, to)) {
+        pendingPromotion = { from, to }
+        document.getElementById("promotionBox").style.display = "flex"
+        return
+    }
+    sendMove(from, to, null)
 }
 
 /* ---------------- SEND MOVE ---------------- */
-
 function sendMove(from, to, promotion) {
-    if (gameOver) return;
-
-    let move = convertMove(from, to);
-    if (promotion) move += promotion;
+    let move = convertMove(from, to)
+    if (promotion) move += promotion
 
     fetch("/move", {
         method: "POST",
@@ -227,106 +257,92 @@ function sendMove(from, to, promotion) {
     })
     .then(res => res.json())
     .then(data => {
+        if (data.error) return
 
-        if (data.status !== "success") {
-            console.error(data.message);
-            return;
+        if (data.fen) {
+            drawBoard(data.fen)
+            moveSound.play()
+            addMoveToHistory(move)
         }
 
-        drawBoard(data.fen);
-        moveSound.play();
-        addMoveToHistory(move);
+        if (data.check) highlightCheck(data.check_square)
 
-        if (data.game_over) {
-            gameOver = true;
-            clearInterval(timerInterval);
-            return;
+        if (data.result) {
+            clearInterval(timerInterval)
+
+            // ------------------ PVP WINNER ------------------
+            if (gameMode === "pvp" && data.winner) {
+                getNextTheme() // change board theme
+                window.location.href = `/result/${data.result}?winner=${encodeURIComponent(data.winner)}`
+                return
+            }
+
+            // ------------------ AI WIN ------------------
+            if (gameMode === "ai" && data.result === "win") {
+                unlockNextLevel()
+                getNextTheme() // change board theme
+            }
+
+            window.location.href = "/result/" + data.result
+            return
         }
 
-        /* -------- AI MOVE -------- */
-
+        // ------------------ AI TURN ------------------
         if (gameMode === "ai") {
             setTimeout(() => {
-                fetch("/ai-move", { method: "POST" })
-                    .then(res => res.json())
-                    .then(aiData => {
+                fetch("/ai_move")
+                .then(res => res.json())
+                .then(aiData => {
+                    drawBoard(aiData.fen)
+                    moveSound.play()
+                    addMoveToHistory("AI move")
 
-                        if (aiData.status !== "success") return;
+                    if (aiData.check) highlightCheck(aiData.check_square)
 
-                        drawBoard(aiData.fen);
-                        moveSound.play();
-                        addMoveToHistory("AI: " + aiData.move);
-
-                        if (aiData.game_over) {
-                            gameOver = true;
-                            clearInterval(timerInterval);
-                        }
-                    })
-                    .catch(err => console.error("AI error:", err));
-
-            }, 500);
+                    if (aiData.result) {
+                        clearInterval(timerInterval)
+                        window.location.href = "/result/" + aiData.result
+                    }
+                })
+            }, 1200)
         }
     })
-    .catch(err => console.error("Move error:", err));
+}
+
+/* ---------------- PROMOTION SELECT ---------------- */
+function promote(piece) {
+    document.getElementById("promotionBox").style.display = "none"
+    sendMove(pendingPromotion.from, pendingPromotion.to, piece)
+    pendingPromotion = null
 }
 
 /* ---------------- HISTORY ---------------- */
-
 function addMoveToHistory(move) {
-    if (!historyList) return;
-    let li = document.createElement("li");
-    li.innerText = move;
-    historyList.appendChild(li);
+    if (!historyList) return
+    let item = document.createElement("li")
+    item.innerText = move
+    historyList.appendChild(item)
+    historyList.scrollTop = historyList.scrollHeight
 }
 
-/* ---------------- HELPERS ---------------- */
-
-function clearHighlights() {
-    document.querySelectorAll(".highlight").forEach(e => e.classList.remove("highlight"));
-}
-
-function clearDots() {
-    document.querySelectorAll(".moveDot").forEach(e => e.remove());
-}
-
-/* ---------------- CONVERT ---------------- */
-
+/* ---------------- CONVERTERS ---------------- */
 function convertToSquare(r, c) {
-    return files[c] + (8 - r);
+    return files[c] + (8 - r)
 }
 
 function convertFromSquare(square) {
-    return {
-        row: 8 - parseInt(square[1]),
-        col: files.indexOf(square[0])
-    };
-}
-
-function convertMove(from, to) {
-    return convertToSquare(from[0], from[1]) + convertToSquare(to[0], to[1]);
+    return { row: 8 - square[1], col: files.indexOf(square[0]) }
 }
 
 /* ---------------- NEW GAME ---------------- */
-
 function newGame() {
-    fetch("/reset", { method: "POST" })
-        .then(res => res.json())
-        .then(() => loadState());
-}
-
-/* ---------------- LOAD STATE ---------------- */
-
-function loadState() {
-    fetch("/state")
-        .then(res => res.json())
-        .then(data => {
-            drawBoard(data.fen);
-            startTimer();
-        });
+    fetch("/new_game")
+    .then(res => res.json())
+    .then(data => {
+        drawBoard(data.fen)
+        startTimer()
+    })
 }
 
 /* ---------------- INIT ---------------- */
-
-if (boardDiv) {
-    newGame();
-}
+if (boardDiv) newGame()

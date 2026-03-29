@@ -31,6 +31,14 @@ text-align:center;
 
 }
 
+/* ---------------- THEMES (NEW SYSTEM) ---------------- */
+
+/* Default Theme */
+body.default .white{ background:#e9edf1; }
+body.default .black{ background:#6b7a8f; }
+
+
+
 /* ---------------- TITLES ---------------- */
 
 h1{
@@ -109,27 +117,27 @@ position:relative;
 
 }
 
-/* square colors */
+/* ---------------- OLD THEMES (kept for compatibility) ---------------- */
 
 .white{background:#e9edf1;}
-
 .black{background:#6b7a8f;}
+
 .white.theme2 { background-color: #ecebe7; }
 .black.theme2 { background-color: #415cb1; }
 
-.white.white.theme3 { background-color: #faf4f4;  }
-.black.black.theme3 { background-color: #46e1f2;  }
+.white.theme3 { background-color: #faf4f4; }
+.black.theme3 { background-color: #46e1f2; }
 
 .white.theme4 { background-color: #CDE7F0; }
 .black.theme4 { background-color: #2C6E91; }
 
-/* selected square */
+/* ---------------- SELECTED SQUARE ---------------- */
 
 .highlight{
 outline:3px solid rgb(11, 7, 7);
 }
 
-/* ---------------- MOVE DOT (NEW) ---------------- */
+/* ---------------- MOVE DOT ---------------- */
 
 .moveDot{
 
@@ -144,7 +152,7 @@ position:absolute;
 
 }
 
-/* ---------------- KING CHECK HIGHLIGHT (NEW) ---------------- */
+/* ---------------- KING CHECK HIGHLIGHT ---------------- */
 
 .check{
 
@@ -247,85 +255,4 @@ button{
 font-size:14px;
 padding:10px 18px;
 }
-}
-/* ================= AUTH PAGES (GEN Z STYLE) ================= */
-
-
-/* Glass card */
-.auth-container{
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(20px);
-    padding: 40px;
-    border-radius: 20px;
-    width: 340px;
-    text-align: center;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-    animation: fadeUp 0.8s ease;
-}
-
-/* Heading */
-.auth-container h2{
-    font-size: 28px;
-    margin-bottom: 10px;
-}
-
-/* Subtext */
-.auth-container p{
-    font-size: 14px;
-    opacity: 0.7;
-    margin-bottom: 20px;
-}
-
-/* Inputs */
-.auth-container input{
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    border-radius: 10px;
-    border: none;
-    outline: none;
-    background: rgba(255,255,255,0.15);
-    color: white;
-}
-
-/* Placeholder color */
-.auth-container input::placeholder{
-    color: rgba(255,255,255,0.7);
-}
-
-/* Button upgrade */
-.auth-container button{
-    width: 100%;
-    margin-top: 15px;
-    background: linear-gradient(45deg, #7719e1e0, #7c19d3);
-    font-weight: bold;
-}
-
-.auth-container button:hover{
-    transform: scale(1.07);
-    box-shadow: 0 0 20px #7325c797;
-}
-
-/* Links */
-.auth-link{
-    margin-top: 15px;
-    font-size: 14px;
-}
-
-.auth-link a{
-    color: #00f2ff;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-/* Animation */
-@keyframes fadeUp{
-    from{
-        opacity:0;
-        transform:translateY(40px);
-    }
-    to{
-        opacity:1;
-        transform:translateY(0);
-    }
 }
