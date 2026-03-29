@@ -24,24 +24,6 @@ if (!localStorage.getItem("currentLevel")) {
     localStorage.setItem("currentLevel", "1")
 }
 
-function getCurrentLevel() {
-    return parseInt(localStorage.getItem("currentLevel")) || 1
-}
-
-function getUnlockedLevel() {
-    return parseInt(localStorage.getItem("unlockedLevel")) || 1
-}
-
-function unlockNextLevel() {
-    let current = getCurrentLevel()
-    let unlocked = getUnlockedLevel()
-
-    if (current === unlocked && unlocked < MAX_LEVEL) {
-        localStorage.setItem("unlockedLevel", unlocked + 1)
-        console.log(" Level Unlocked:", unlocked + 1)
-    }
-}
-
 /* ---------------- TIMER ---------------- */
 
 function startTimer() {
@@ -109,10 +91,9 @@ function createSquare(r, c, piece) {
     let baseColor = (r + c) % 2 == 0 ? "white" : "black"
     square.classList.add(baseColor)
 
-    
     if (currentTheme === 2) square.classList.add("theme2")
     if (currentTheme === 3) square.classList.add("theme3")
-     if (currentTheme === 4) square.classList.add("theme4")
+    if (currentTheme === 4) square.classList.add("theme4")
 
     square.dataset.row = r
     square.dataset.col = c
@@ -128,28 +109,15 @@ function createSquare(r, c, piece) {
     boardDiv.appendChild(square)
 }
 
-/* ---------------- THEME CHANGE ---------------- */
+/* ---------------- THEME ---------------- */
 
 function changeBoardTheme() {
     currentTheme++
-
     if (currentTheme > 4) currentTheme = 1
-
     localStorage.setItem("boardTheme", currentTheme)
-
-    drawBoardFromServer()
 }
 
-// helper to redraw from backend
-function drawBoardFromServer() {
-    fetch("/current_fen")
-        .then(res => res.json())
-        .then(data => {
-            drawBoard(data.fen)
-        })
-}
-
-/* ---------------- DOT SYSTEM ---------------- */
+/* ---------------- DOTS ---------------- */
 
 function clearDots() {
     document.querySelectorAll(".moveDot").forEach(dot => dot.remove())
@@ -173,6 +141,8 @@ function selectSquare() {
         fetch("/legal_moves/" + squareName)
             .then(res => res.json())
             .then(data => {
+                if (!data || !data.moves) return
+
                 data.moves.forEach(move => {
                     let sq = convertFromSquare(move)
                     let target = document.querySelector(
@@ -212,55 +182,44 @@ function clearCheckHighlight() {
 
 function highlightCheck(square) {
     clearCheckHighlight()
+    if (!square) return
 
-    let sq = convertFromSquare(square)
+    try {
+        let sq = convertFromSquare(square)
 
-    let target = document.querySelector(
-        `[data-row='${sq.row}'][data-col='${sq.col}']`
-    )
+        let target = document.querySelector(
+            `[data-row='${sq.row}'][data-col='${sq.col}']`
+        )
 
-    if (target) {
-        target.classList.add("check")
+        if (target) target.classList.add("check")
+    } catch (e) {
+        console.log("Check error:", e)
     }
 }
 
-/* ---------------- PROMOTION ---------------- */
+/* ---------------- PROMOTION FIXED ---------------- */
 
 function checkPromotion(from, to) {
-    let fromRow = parseInt(from[0])
-    let fromCol = from[1]
 
-    let piece = document.querySelector(`[data-row='${fromRow}'][data-col='${fromCol}'] img`)
+    let fromRow = parseInt(from[0])
+    let fromCol = parseInt(from[1])
+    let toRow = parseInt(to[0])
+
+    let piece = document.querySelector(
+        `[data-row='${fromRow}'][data-col='${fromCol}'] img`
+    )
+
     if (!piece) return false
 
     let src = piece.src
-    let toRow = parseInt(to[0])
-    let toCol = to[1]
 
-    let targetSquare = document.querySelector(`[data-row='${toRow}'][data-col='${toCol}'] img`)
-
-    if (src.includes("wp.png")) {
-        if (toRow !== 0) return false
-        if (fromCol === toCol && targetSquare) return false
-        if (fromCol !== toCol && !targetSquare) return false
-        return true
-    }
-
-    if (src.includes("bp.png")) {
-        if (toRow !== 7) return false
-        if (fromCol === toCol && targetSquare) return false
-        if (fromCol !== toCol && !targetSquare) return false
-        return true
-    }
+    if (src.includes("wp.png") && toRow === 0) return true
+    if (src.includes("bp.png") && toRow === 7) return true
 
     return false
 }
 
 /* ---------------- MOVE ---------------- */
-
-function convertMove(from, to) {
-    return files[from[1]] + (8 - from[0]) + files[to[1]] + (8 - to[0])
-}
 
 function movePiece(from, to) {
     if (checkPromotion(from, to)) {
@@ -274,7 +233,8 @@ function movePiece(from, to) {
 /* ---------------- SEND MOVE ---------------- */
 
 function sendMove(from, to, promotion) {
-    let move = convertMove(from, to)
+
+    let move = files[from[1]] + (8 - from[0]) + files[to[1]] + (8 - to[0])
     if (promotion) move += promotion
 
     fetch("/move", {
@@ -291,16 +251,16 @@ function sendMove(from, to, promotion) {
             drawBoard(data.fen)
             moveSound.play()
             addMoveToHistory(move)
+
+            setTimeout(() => {
+                if (data.check && data.check_square) {
+                    highlightCheck(data.check_square)
+                }
+            }, 50)
         }
 
-        if (data.check) {
-            highlightCheck(data.check_square)
-        }
-
-        // ✅ GAME OVER → CHANGE THEME
         if (data.result) {
             clearInterval(timerInterval)
-
             changeBoardTheme()
 
             if (gameMode === "ai" && data.result === "win") {
@@ -320,12 +280,16 @@ function sendMove(from, to, promotion) {
                 .then(res => res.json())
                 .then(aiData => {
 
-                    drawBoard(aiData.fen)
-                    moveSound.play()
-                    addMoveToHistory("AI move")
+                    if (aiData.fen) {
+                        drawBoard(aiData.fen)
+                        moveSound.play()
+                        addMoveToHistory("AI move")
 
-                    if (aiData.check) {
-                        highlightCheck(aiData.check_square)
+                        setTimeout(() => {
+                            if (aiData.check && aiData.check_square) {
+                                highlightCheck(aiData.check_square)
+                            }
+                        }, 50)
                     }
 
                     if (aiData.result) {
@@ -342,7 +306,7 @@ function sendMove(from, to, promotion) {
     })
 }
 
-/* ---------------- PROMOTION SELECT ---------------- */
+/* ---------------- PROMOTE ---------------- */
 
 function promote(piece) {
     document.getElementById("promotionBox").style.display = "none"
@@ -357,7 +321,6 @@ function addMoveToHistory(move) {
     let item = document.createElement("li")
     item.innerText = move
     historyList.appendChild(item)
-    historyList.scrollTop = historyList.scrollHeight
 }
 
 /* ---------------- CONVERTERS ---------------- */
