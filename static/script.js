@@ -3,7 +3,7 @@ let selected = null
 let files = "abcdefgh"
 let historyList = document.getElementById("history")
 
-let time = 600
+let time = 1800
 let timerInterval
 
 let moveSound = new Audio("/static/sounds/move_sound.wav")
@@ -65,7 +65,7 @@ function getCurrentTheme() {
 /* ---------------- TIMER ---------------- */
 function startTimer() {
     clearInterval(timerInterval)
-    time = 600
+    time = 1800
 
     timerInterval = setInterval(() => {
         time--
