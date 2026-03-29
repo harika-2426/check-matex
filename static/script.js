@@ -1,3 +1,46 @@
+/* ================= AUTH + NAVIGATION (NEW) ================= */
+
+// Navigation
+function goToLogin() {
+    window.location.href = "/login";
+}
+
+function goToRegister() {
+    window.location.href = "/register";
+}
+
+// Register
+function registerUser(e) {
+    e.preventDefault();
+
+    let username = document.getElementById("regUsername").value;
+    let password = document.getElementById("regPassword").value;
+
+    localStorage.setItem("user", JSON.stringify({ username, password }));
+
+    alert("Registered successfully! Now login.");
+    window.location.href = "/login";
+}
+
+// Login
+function loginUser(e) {
+    e.preventDefault();
+
+    let username = document.getElementById("loginUsername").value;
+    let password = document.getElementById("loginPassword").value;
+
+    let storedUser = JSON.parse(localStorage.getItem("user"));
+
+    if (storedUser && username === storedUser.username && password === storedUser.password) {
+        alert("Login successful!");
+        window.location.href = "/mode";
+    } else {
+        alert("Invalid credentials!");
+    }
+}
+
+/* ================= EXISTING GAME CODE ================= */
+
 let boardDiv = document.getElementById("board")
 let selected = null
 let files = "abcdefgh"
@@ -62,6 +105,8 @@ let pieces = {
 /* ---------------- BOARD ---------------- */
 
 function drawBoard(fen) {
+    if (!boardDiv) return
+
     boardDiv.innerHTML = ""
     resetUI()
 
@@ -193,11 +238,6 @@ function sendMove(from, to, promotion) {
             drawBoard(data.fen)
             moveSound.play()
             addMoveToHistory(move)
-        }
-
-        if (data.check) {
-            // OPTIONAL: backend may or may not send square
-            // keep safe
         }
 
         if (data.result && !gameOver) {

@@ -97,42 +97,56 @@ def home():
     return render_template("home.html")
 
 
+# ---------------- REGISTER ---------------- #
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        if database.create_user(request.form["username"], request.form["password"]):
+        username = request.form["username"]
+        password = request.form["password"]
+
+        if database.create_user(username, password):
             return redirect("/login")
-        return "User already exists"
+        else:
+            return render_template("register.html", error="User already exists")
+
     return render_template("register.html")
 
 
+# ---------------- LOGIN ---------------- #
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        user = database.get_user(
-            request.form["username"],
-            request.form["password"]
-        )
+        username = request.form["username"]
+        password = request.form["password"]
+
+        user = database.get_user(username, password)
+
         if user:
-            session["user"] = request.form["username"]
+            session["user"] = username
             return redirect("/mode")
-        return "Invalid credentials"
+        else:
+            return render_template("login.html", error="Invalid credentials")
+
     return render_template("login.html")
 
 
+# ---------------- LOGOUT ---------------- #
 @app.route("/logout")
 def logout():
     session.pop("user", None)
     return redirect("/")
 
 
+# ---------------- MODE PAGE ---------------- #
 @app.route("/mode")
 def mode_page():
     if "user" not in session:
         return redirect("/login")
-    return render_template("mode.html")
+
+    return render_template("mode.html", user=session["user"])
 
 
+# ---------------- LEVELS ---------------- #
 @app.route("/levels")
 def levels():
     if "user" not in session:
@@ -142,6 +156,7 @@ def levels():
     return render_template("levels.html", unlocked=unlocked)
 
 
+# ---------------- GAME ---------------- #
 @app.route("/game/<game_mode>/<lvl>")
 def game(game_mode, lvl):
     global board, mode, level
@@ -156,6 +171,7 @@ def game(game_mode, lvl):
     return render_template("game.html", mode=mode, level=level)
 
 
+# ---------------- PLAY AGAIN ---------------- #
 @app.route("/play_again")
 def play_again():
     global board

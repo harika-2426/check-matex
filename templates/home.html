@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>Check MateX</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
 
-<h1>Check MateX</h1>
+<h1> Check MateX</h1>
 <br>
 <img src="{{ url_for('static', filename='images/chess_board.png') }}" width="50" height="50">
-<div class="home-buttons">
-    <a href="/login"><button>Login</button></a>
-    <a href="/register"><button>Register</button></a>
+<h2>Welcome to Chess Arena.</h2>
+
+<div class="controls">
+    <button onclick="goToLogin()">Login</button>
+    <button onclick="goToRegister()">Register</button>
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 </body>
 </html>

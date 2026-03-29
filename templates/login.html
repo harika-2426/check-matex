@@ -1,24 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login</title>
+    <title>Login - Check MateX</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+<body class="auth-body">
 
-<body>
+<div class="auth-container">
+    <h2>Welcome Back 👋</h2>
 
-<h2>Login</h2>
+    <form onsubmit="loginUser(event)">
+        <input type="text" id="loginUsername" placeholder="Username" required>
+        <input type="password" id="loginPassword" placeholder="Password" required>
 
-<form method="POST" class="form-box">
-    <input type="text" name="username" placeholder="Username" required>
-    <input type="password" name="password" placeholder="Password" required>
-    <br>
-    <button type="submit">Login</button>
-</form>
+        <button type="submit">Login </button>
+    </form>
 
-<p>Don't have an account?</p>
-<a href="/register">Register</a>
-
+    <p class="auth-link">
+        New here? <a href="/register">Register</a>
+    </p>
+</div>
+{% if error %}
+<p style="color:red;">{{ error }}</p>
+{% endif %}
 <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 </body>
+</html>
