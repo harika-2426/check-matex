@@ -12,6 +12,7 @@ let gameMode = window.location.pathname.includes("ai") ? "ai" : "pvp"
 localStorage.setItem("mode", gameMode)
 
 let pendingPromotion = null
+let gameOver = false   // 🔥 IMPORTANT FIX
 
 const MAX_LEVEL = 10
 
@@ -24,6 +25,25 @@ if (!localStorage.getItem("currentLevel")) {
     localStorage.setItem("currentLevel", "1")
 }
 
+/* ---------------- LEVEL SYSTEM ---------------- */
+
+function getCurrentLevel() {
+    return parseInt(localStorage.getItem("currentLevel")) || 1
+}
+
+function getUnlockedLevel() {
+    return parseInt(localStorage.getItem("unlockedLevel")) || 1
+}
+
+function unlockNextLevel() {
+    let current = getCurrentLevel()
+    let unlocked = getUnlockedLevel()
+
+    if (current === unlocked && unlocked < MAX_LEVEL) {
+        localStorage.setItem("unlockedLevel", unlocked + 1)
+    }
+}
+
 /* ---------------- TIMER ---------------- */
 
 function startTimer() {
@@ -31,6 +51,8 @@ function startTimer() {
     time = 1800
 
     timerInterval = setInterval(() => {
+        if (gameOver) return   // 🔥 STOP TIMER LOGIC
+
         time--
 
         let minutes = Math.floor(time / 60)
@@ -44,7 +66,7 @@ function startTimer() {
 
         if (time <= 0) {
             clearInterval(timerInterval)
-            alert("Time Over")
+            gameOver = true
             window.location.href = "/result/draw"
         }
 
@@ -54,11 +76,11 @@ function startTimer() {
 /* ---------------- PIECES ---------------- */
 
 let pieces = {
-    "r": "br.png", "n": "bn.png", "b": "bb.png", "q": "bq.png", "k": "bk.png", "p": "bp.png",
-    "R": "wr.png", "N": "wn.png", "B": "wb.png", "Q": "wq.png", "K": "wk.png", "P": "wp.png"
+    r: "br.png", n: "bn.png", b: "bb.png", q: "bq.png", k: "bk.png", p: "bp.png",
+    R: "wr.png", N: "wn.png", B: "wb.png", Q: "wq.png", K: "wk.png", P: "wp.png"
 }
 
-/* ---------------- DRAW BOARD ---------------- */
+/* ---------------- BOARD ---------------- */
 
 function drawBoard(fen) {
     boardDiv.innerHTML = ""
@@ -82,13 +104,13 @@ function drawBoard(fen) {
     }
 }
 
-/* ---------------- CREATE SQUARE ---------------- */
+/* ---------------- SQUARE ---------------- */
 
 function createSquare(r, c, piece) {
     let square = document.createElement("div")
     square.classList.add("square")
 
-    let baseColor = (r + c) % 2 == 0 ? "white" : "black"
+    let baseColor = (r + c) % 2 === 0 ? "white" : "black"
     square.classList.add(baseColor)
 
     if (currentTheme === 2) square.classList.add("theme2")
@@ -109,30 +131,19 @@ function createSquare(r, c, piece) {
     boardDiv.appendChild(square)
 }
 
-/* ---------------- THEME ---------------- */
-
-function changeBoardTheme() {
-    currentTheme++
-    if (currentTheme > 4) currentTheme = 1
-    localStorage.setItem("boardTheme", currentTheme)
-}
-
-/* ---------------- DOTS ---------------- */
-
-function clearDots() {
-    document.querySelectorAll(".moveDot").forEach(dot => dot.remove())
-}
-
 /* ---------------- SELECT ---------------- */
 
 function selectSquare() {
+    if (gameOver) return   // 🔥 BLOCK AFTER WIN
+
     clearHighlights()
     clearDots()
 
     let piece = this.querySelector("img")
 
-    if (selected == null) {
+    if (!selected) {
         if (!piece) return
+
         selected = this
         this.classList.add("highlight")
 
@@ -168,65 +179,17 @@ function selectSquare() {
     }
 }
 
-/* ---------------- CLEAR ---------------- */
-
-function clearHighlights() {
-    document.querySelectorAll(".highlight").forEach(s => s.classList.remove("highlight"))
-}
-
-function clearCheckHighlight() {
-    document.querySelectorAll(".check").forEach(s => s.classList.remove("check"))
-}
-
-/* ---------------- CHECK ---------------- */
-
-function highlightCheck(square) {
-    clearCheckHighlight()
-    if (!square) return
-
-    try {
-        let sq = convertFromSquare(square)
-
-        let target = document.querySelector(
-            `[data-row='${sq.row}'][data-col='${sq.col}']`
-        )
-
-        if (target) target.classList.add("check")
-    } catch (e) {
-        console.log("Check error:", e)
-    }
-}
-
-/* ---------------- PROMOTION FIXED ---------------- */
-
-function checkPromotion(from, to) {
-
-    let fromRow = parseInt(from[0])
-    let fromCol = parseInt(from[1])
-    let toRow = parseInt(to[0])
-
-    let piece = document.querySelector(
-        `[data-row='${fromRow}'][data-col='${fromCol}'] img`
-    )
-
-    if (!piece) return false
-
-    let src = piece.src
-
-    if (src.includes("wp.png") && toRow === 0) return true
-    if (src.includes("bp.png") && toRow === 7) return true
-
-    return false
-}
-
 /* ---------------- MOVE ---------------- */
 
 function movePiece(from, to) {
+    if (gameOver) return
+
     if (checkPromotion(from, to)) {
         pendingPromotion = { from, to }
         document.getElementById("promotionBox").style.display = "flex"
         return
     }
+
     sendMove(from, to, null)
 }
 
@@ -234,7 +197,9 @@ function movePiece(from, to) {
 
 function sendMove(from, to, promotion) {
 
-    let move = files[from[1]] + (8 - from[0]) + files[to[1]] + (8 - to[0])
+    if (gameOver) return
+
+    let move = convertMove(from, to)
     if (promotion) move += promotion
 
     fetch("/move", {
@@ -245,23 +210,25 @@ function sendMove(from, to, promotion) {
     .then(res => res.json())
     .then(data => {
 
+        if (gameOver) return
+
         if (data.error) return
 
         if (data.fen) {
             drawBoard(data.fen)
             moveSound.play()
             addMoveToHistory(move)
-
-            setTimeout(() => {
-                if (data.check && data.check_square) {
-                    highlightCheck(data.check_square)
-                }
-            }, 50)
         }
 
-        if (data.result) {
+        if (data.check && data.check_square) {
+            highlightCheck(data.check_square)
+        }
+
+        /* ---------------- GAME OVER ---------------- */
+
+        if (data.result && !gameOver) {
+            gameOver = true
             clearInterval(timerInterval)
-            changeBoardTheme()
 
             if (gameMode === "ai" && data.result === "win") {
                 unlockNextLevel()
@@ -269,39 +236,46 @@ function sendMove(from, to, promotion) {
 
             setTimeout(() => {
                 window.location.href = "/result/" + data.result
-            }, 500)
+            }, 600)
 
             return
         }
 
+        /* ---------------- AI MOVE ---------------- */
+
         if (gameMode === "ai") {
+
+            if (gameOver) return
+
             setTimeout(() => {
+
                 fetch("/ai_move")
                 .then(res => res.json())
                 .then(aiData => {
+
+                    if (gameOver) return
 
                     if (aiData.fen) {
                         drawBoard(aiData.fen)
                         moveSound.play()
                         addMoveToHistory("AI move")
-
-                        setTimeout(() => {
-                            if (aiData.check && aiData.check_square) {
-                                highlightCheck(aiData.check_square)
-                            }
-                        }, 50)
                     }
 
-                    if (aiData.result) {
+                    if (aiData.check && aiData.check_square) {
+                        highlightCheck(aiData.check_square)
+                    }
+
+                    if (aiData.result && !gameOver) {
+                        gameOver = true
                         clearInterval(timerInterval)
-                        changeBoardTheme()
 
                         setTimeout(() => {
                             window.location.href = "/result/" + aiData.result
-                        }, 500)
+                        }, 600)
                     }
                 })
-            }, 1200)
+
+            }, 900)
         }
     })
 }
@@ -314,16 +288,44 @@ function promote(piece) {
     pendingPromotion = null
 }
 
-/* ---------------- HISTORY ---------------- */
+/* ---------------- CHECK ---------------- */
+
+function highlightCheck(square) {
+    clearCheckHighlight()
+
+    if (!square) return
+
+    let sq = convertFromSquare(square)
+
+    let target = document.querySelector(
+        `[data-row='${sq.row}'][data-col='${sq.col}']`
+    )
+
+    if (target) target.classList.add("check")
+}
+
+/* ---------------- HELPERS ---------------- */
+
+function clearHighlights() {
+    document.querySelectorAll(".highlight").forEach(e => e.classList.remove("highlight"))
+}
+
+function clearCheckHighlight() {
+    document.querySelectorAll(".check").forEach(e => e.classList.remove("check"))
+}
+
+function clearDots() {
+    document.querySelectorAll(".moveDot").forEach(e => e.remove())
+}
 
 function addMoveToHistory(move) {
     if (!historyList) return
-    let item = document.createElement("li")
-    item.innerText = move
-    historyList.appendChild(item)
+    let li = document.createElement("li")
+    li.innerText = move
+    historyList.appendChild(li)
 }
 
-/* ---------------- CONVERTERS ---------------- */
+/* ---------------- CONVERT ---------------- */
 
 function convertToSquare(r, c) {
     return files[c] + (8 - r)
@@ -340,11 +342,12 @@ function convertFromSquare(square) {
 
 function newGame() {
     fetch("/new_game")
-    .then(res => res.json())
-    .then(data => {
-        drawBoard(data.fen)
-        startTimer()
-    })
+        .then(res => res.json())
+        .then(data => {
+            gameOver = false
+            drawBoard(data.fen)
+            startTimer()
+        })
 }
 
 /* ---------------- INIT ---------------- */
