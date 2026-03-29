@@ -29,15 +29,14 @@ align-items:center;
 color:white;
 text-align:center;
 
+overflow-x:hidden; /* ✅ prevents scroll issues */
+
 }
 
-/* ---------------- THEMES (NEW SYSTEM) ---------------- */
+/* ---------------- THEMES ---------------- */
 
-/* Default Theme */
 body.default .white{ background:#e9edf1; }
 body.default .black{ background:#6b7a8f; }
-
-
 
 /* ---------------- TITLES ---------------- */
 
@@ -86,14 +85,18 @@ box-shadow:0 0 10px rgba(0,0,0,0.6);
 
 #board{
 
-width:500px;
-height:500px;
+/* ✅ RESPONSIVE MAGIC */
+width:90vmin;
+height:90vmin;
+
+max-width:600px;
+max-height:600px;
+
+aspect-ratio:1 / 1;
 
 display:grid;
 grid-template-columns:repeat(8, 1fr);
 grid-template-rows:repeat(8, 1fr);
-
-gap:0;
 
 border:4px solid black;
 
@@ -112,12 +115,11 @@ display:flex;
 align-items:center;
 justify-content:center;
 
-/* IMPORTANT for dot positioning */
 position:relative;
 
 }
 
-/* ---------------- OLD THEMES (kept for compatibility) ---------------- */
+/* ---------------- THEMES (OLD SUPPORT) ---------------- */
 
 .white{background:#e9edf1;}
 .black{background:#6b7a8f;}
@@ -141,10 +143,10 @@ outline:3px solid rgb(11, 7, 7);
 
 .moveDot{
 
-width:10px;
-height:10px;
+width:12px;
+height:12px;
 
-background-color:rgb(18, 15, 15);
+background-color:rgb(244, 168, 61);
 
 border-radius:50%;
 
@@ -152,18 +154,18 @@ position:absolute;
 
 }
 
-/* ---------------- KING CHECK HIGHLIGHT ---------------- */
+/* ---------------- KING CHECK ---------------- */
 
 .check{
-
 box-shadow: inset 0 0 0 4px rgb(237, 42, 42);
-
 }
 
 /* ---------------- CHESS PIECES ---------------- */
 
 .piece{
 width:80%;
+height:80%;
+object-fit:contain;
 cursor:grab;
 user-select:none;
 }
@@ -172,6 +174,9 @@ user-select:none;
 
 .controls{
 margin-bottom:15px;
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
 }
 
 /* ---------------- PROMOTION POPUP ---------------- */
@@ -187,7 +192,7 @@ left:50%;
 
 transform:translate(-50%,-50%);
 
-background:#dc87c3c4;
+background:#47c4cfc4;
 
 padding:20px;
 
@@ -235,24 +240,51 @@ box-shadow:0 0 15px black;
 display:flex;
 gap:15px;
 margin-top:20px;
+flex-wrap:wrap;
+justify-content:center;
 
 }
 
-/* ---------------- MOBILE RESPONSIVE ---------------- */
+/* ---------------- TABLET ---------------- */
+
+@media (max-width:768px){
+
+h1{
+font-size:36px;
+}
+
+#board{
+width:85vmin;
+height:85vmin;
+}
+
+}
+
+/* ---------------- MOBILE ---------------- */
 
 @media (max-width:600px){
 
 h1{
-font-size:32px;
+font-size:28px;
+}
+
+h2{
+font-size:20px;
 }
 
 #board{
-width:320px;
-height:320px;
+width:95vmin;
+height:95vmin;
 }
 
 button{
 font-size:14px;
 padding:10px 18px;
 }
+
+.moveDot{
+width:10px;
+height:10px;
+}
+
 }
