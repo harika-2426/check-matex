@@ -2,10 +2,12 @@
 <html>
 
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Check MateX</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
+<body>
+<div class="container">
 <h1>Check MateX</h1>
 
 <div id="board"></div>
@@ -22,6 +24,7 @@
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <h2 id="timer">30:00</h2>
+</div>
 </body>
 
 </html>

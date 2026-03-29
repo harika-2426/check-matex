@@ -23,14 +23,25 @@ min-height:100vh;
 
 display:flex;
 flex-direction:column;
-justify-content:center;
-align-items:center;
 
 color:white;
 text-align:center;
 
-overflow-x:hidden; /* ✅ prevents scroll issues */
+overflow-x:hidden;
 
+padding:10px;
+
+}
+/* ---------------- MAIN CONTAINER ---------------- */
+
+.container{
+    width:100%;
+    max-width:700px;
+    margin:auto;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
 }
 
 /* ---------------- THEMES ---------------- */
@@ -85,12 +96,8 @@ box-shadow:0 0 10px rgba(0,0,0,0.6);
 
 #board{
 
-/* ✅ RESPONSIVE MAGIC */
-width:90vmin;
-height:90vmin;
-
-max-width:600px;
-max-height:600px;
+width:100%;
+max-width:500px;
 
 aspect-ratio:1 / 1;
 
@@ -99,8 +106,6 @@ grid-template-columns:repeat(8, 1fr);
 grid-template-rows:repeat(8, 1fr);
 
 border:4px solid black;
-
-margin:auto;
 
 }
 
