@@ -13,6 +13,9 @@ localStorage.setItem("mode", gameMode)
 
 let pendingPromotion = null
 
+
+let currentTurn = "w"
+
 const MAX_LEVEL = 10
 
 if (!localStorage.getItem("unlockedLevel")) {
@@ -22,7 +25,7 @@ if (!localStorage.getItem("currentLevel")) {
     localStorage.setItem("currentLevel", "1")
 }
 
-// ---------------- LEVEL FUNCTIONS ----------------
+/* ---------------- LEVEL FUNCTIONS ---------------- */
 function getCurrentLevel() {
     return parseInt(localStorage.getItem("currentLevel")) || 1
 }
@@ -41,13 +44,13 @@ function unlockNextLevel() {
     }
 }
 
-// ---------------- BOARD THEMES ----------------
+/* ---------------- THEMES ---------------- */
 const boardThemes = [
-    { light: "#ced1d1", dark: "#5e90bb" }, // classic
-    { light: "#f3f3f3", dark: "#5f5f5f" }, // gray
-    { light: "#c6e2ff", dark: "#2bada4" }, // blue
-    { light: "#cccccb", dark: "#2e2cb3df" }, // peach
-    { light: "#e9edf1", dark: "#6b7a8f" }, // green
+    { light: "#ced1d1", dark: "#5e90bb" },
+    { light: "#f3f3f3", dark: "#5f5f5f" },
+    { light: "#c6e2ff", dark: "#2bada4" },
+    { light: "#cccccb", dark: "#2e2cb3df" },
+    { light: "#e9edf1", dark: "#6b7a8f" },
 ]
 
 function getNextTheme() {
@@ -97,6 +100,9 @@ function drawBoard(fen) {
     boardDiv.innerHTML = ""
     clearCheckHighlight()
 
+    
+    currentTurn = fen.split(" ")[1]
+
     let rows = fen.split(" ")[0].split("/")
     for (let r = 0; r < 8; r++) {
         let col = 0
@@ -119,7 +125,6 @@ function createSquare(r, c, piece) {
     let square = document.createElement("div")
     square.classList.add("square")
 
-    // Apply current theme colors
     let theme = getCurrentTheme()
     let isLight = (r + c) % 2 == 0
     square.style.backgroundColor = isLight ? theme.light : theme.dark
@@ -132,6 +137,10 @@ function createSquare(r, c, piece) {
         let img = document.createElement("img")
         img.src = "/static/pieces/" + pieces[piece]
         img.classList.add("piece")
+
+       
+        img.dataset.piece = piece
+
         square.appendChild(img)
     }
 
@@ -148,40 +157,54 @@ function selectSquare() {
     clearHighlights()
     clearDots()
 
-    let piece = this.querySelector("img")
+    let pieceImg = this.querySelector("img")
 
+    // ---------------- FIRST CLICK ----------------
     if (selected == null) {
-        if (!piece) return
-        selected = this
-        this.classList.add("highlight")
 
-        let squareName = convertToSquare(this.dataset.row, this.dataset.col)
+        if (!pieceImg) return
 
-        fetch("/legal_moves/" + squareName)
-            .then(res => res.json())
-            .then(data => {
-                data.moves.forEach(move => {
-                    let sq = convertFromSquare(move)
-                    let target = document.querySelector(
-                        `[data-row='${sq.row}'][data-col='${sq.col}']`
-                    )
-                    if (target) {
-                        let dot = document.createElement("div")
-                        dot.classList.add("moveDot")
-                        target.appendChild(dot)
-                    }
+        let piece = pieceImg.dataset.piece
+
+        
+        if (
+            (currentTurn === "w" && piece === piece.toUpperCase()) ||
+            (currentTurn === "b" && piece === piece.toLowerCase())
+        ) {
+
+            selected = this
+            this.classList.add("highlight")
+
+            let squareName = convertToSquare(this.dataset.row, this.dataset.col)
+
+            fetch("/legal_moves/" + squareName)
+                .then(res => res.json())
+                .then(data => {
+                    data.moves.forEach(move => {
+                        let sq = convertFromSquare(move)
+                        let target = document.querySelector(
+                            `[data-row='${sq.row}'][data-col='${sq.col}']`
+                        )
+                        if (target) {
+                            let dot = document.createElement("div")
+                            dot.classList.add("moveDot")
+                            target.appendChild(dot)
+                        }
+                    })
                 })
-            })
+        }
 
-    } else {
-        let from = selected.dataset.row + selected.dataset.col
-        let to = this.dataset.row + this.dataset.col
-
-        selected.classList.remove("highlight")
-        selected = null
-
-        movePiece(from, to)
+        return
     }
+
+    // ---------------- SECOND CLICK ----------------
+    let from = selected.dataset.row + selected.dataset.col
+    let to = this.dataset.row + this.dataset.col
+
+    selected.classList.remove("highlight")
+    selected = null
+
+    movePiece(from, to)
 }
 
 /* ---------------- CLEAR ---------------- */
@@ -211,18 +234,15 @@ function checkPromotion(from, to) {
     let piece = document.querySelector(`[data-row='${fromRow}'][data-col='${fromCol}'] img`)
     if (!piece) return false
 
-    // White pawn promotion
     if (piece.src.includes("wp.png")) {
-        if (fromRow === 1 && toRow === 0) { // second-to-last row to last row
-            // Check move is straight or diagonal capture
+        if (fromRow === 1 && toRow === 0) {
             if (Math.abs(toCol - fromCol) <= 1) return true
         }
         return false
     }
 
-    // Black pawn promotion
     if (piece.src.includes("bp.png")) {
-        if (fromRow === 6 && toRow === 7) { // second-to-last row to last row
+        if (fromRow === 6 && toRow === 7) {
             if (Math.abs(toCol - fromCol) <= 1) return true
         }
         return false
@@ -270,24 +290,21 @@ function sendMove(from, to, promotion) {
         if (data.result) {
             clearInterval(timerInterval)
 
-            // ------------------ PVP WINNER ------------------
             if (gameMode === "pvp" && data.winner) {
-                getNextTheme() // change board theme
+                getNextTheme()
                 window.location.href = `/result/${data.result}?winner=${encodeURIComponent(data.winner)}`
                 return
             }
 
-            // ------------------ AI WIN ------------------
             if (gameMode === "ai" && data.result === "win") {
                 unlockNextLevel()
-                getNextTheme() // change board theme
+                getNextTheme()
             }
 
             window.location.href = "/result/" + data.result
             return
         }
 
-        // ------------------ AI TURN ------------------
         if (gameMode === "ai") {
             setTimeout(() => {
                 fetch("/ai_move")
@@ -309,7 +326,7 @@ function sendMove(from, to, promotion) {
     })
 }
 
-/* ---------------- PROMOTION SELECT ---------------- */
+/* ---------------- PROMOTION ---------------- */
 function promote(piece) {
     document.getElementById("promotionBox").style.display = "none"
     sendMove(pendingPromotion.from, pendingPromotion.to, piece)
