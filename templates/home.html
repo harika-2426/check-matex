@@ -5,16 +5,17 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
 <h1> Check MateX</h1>
 <br>
 <img src="{{ url_for('static', filename='images/chess_board.png') }}" width="50" height="50">
+<div class="auth-container">
+
 <h2>Welcome to Chess Arena.</h2>
 
-<div class="controls">
+<form class="controls">
     <button onclick="goToLogin()">Login</button>
     <button onclick="goToRegister()">Register</button>
-</div>
+</form>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
