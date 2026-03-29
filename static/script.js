@@ -12,36 +12,19 @@ let gameMode = window.location.pathname.includes("ai") ? "ai" : "pvp"
 localStorage.setItem("mode", gameMode)
 
 let pendingPromotion = null
-let gameOver = false   // 🔥 IMPORTANT FIX
+let gameOver = false
 
 const MAX_LEVEL = 10
 
 let currentTheme = parseInt(localStorage.getItem("boardTheme")) || 1
 
-if (!localStorage.getItem("unlockedLevel")) {
-    localStorage.setItem("unlockedLevel", "1")
-}
-if (!localStorage.getItem("currentLevel")) {
-    localStorage.setItem("currentLevel", "1")
-}
+/* ---------------- RESET SAFE STATE ---------------- */
 
-/* ---------------- LEVEL SYSTEM ---------------- */
-
-function getCurrentLevel() {
-    return parseInt(localStorage.getItem("currentLevel")) || 1
-}
-
-function getUnlockedLevel() {
-    return parseInt(localStorage.getItem("unlockedLevel")) || 1
-}
-
-function unlockNextLevel() {
-    let current = getCurrentLevel()
-    let unlocked = getUnlockedLevel()
-
-    if (current === unlocked && unlocked < MAX_LEVEL) {
-        localStorage.setItem("unlockedLevel", unlocked + 1)
-    }
+function resetUI() {
+    selected = null
+    clearHighlights()
+    clearDots()
+    clearCheckHighlight()
 }
 
 /* ---------------- TIMER ---------------- */
@@ -51,25 +34,21 @@ function startTimer() {
     time = 1800
 
     timerInterval = setInterval(() => {
-        if (gameOver) return   // 🔥 STOP TIMER LOGIC
+        if (gameOver) return
 
         time--
 
-        let minutes = Math.floor(time / 60)
-        let seconds = time % 60
+        let m = Math.floor(time / 60)
+        let s = time % 60
 
         let timer = document.getElementById("timer")
-
-        if (timer) {
-            timer.innerText = minutes + ":" + (seconds < 10 ? "0" : "") + seconds
-        }
+        if (timer) timer.innerText = m + ":" + (s < 10 ? "0" : "") + s
 
         if (time <= 0) {
-            clearInterval(timerInterval)
             gameOver = true
+            clearInterval(timerInterval)
             window.location.href = "/result/draw"
         }
-
     }, 1000)
 }
 
@@ -84,20 +63,21 @@ let pieces = {
 
 function drawBoard(fen) {
     boardDiv.innerHTML = ""
-    clearCheckHighlight()
+    resetUI()
 
     let rows = fen.split(" ")[0].split("/")
 
     for (let r = 0; r < 8; r++) {
         let col = 0
-        for (let char of rows[r]) {
-            if (!isNaN(char)) {
-                for (let i = 0; i < char; i++) {
+
+        for (let ch of rows[r]) {
+            if (!isNaN(ch)) {
+                for (let i = 0; i < ch; i++) {
                     createSquare(r, col, null)
                     col++
                 }
             } else {
-                createSquare(r, col, char)
+                createSquare(r, col, ch)
                 col++
             }
         }
@@ -110,8 +90,7 @@ function createSquare(r, c, piece) {
     let square = document.createElement("div")
     square.classList.add("square")
 
-    let baseColor = (r + c) % 2 === 0 ? "white" : "black"
-    square.classList.add(baseColor)
+    square.classList.add((r + c) % 2 === 0 ? "white" : "black")
 
     if (currentTheme === 2) square.classList.add("theme2")
     if (currentTheme === 3) square.classList.add("theme3")
@@ -134,7 +113,7 @@ function createSquare(r, c, piece) {
 /* ---------------- SELECT ---------------- */
 
 function selectSquare() {
-    if (gameOver) return   // 🔥 BLOCK AFTER WIN
+    if (gameOver) return
 
     clearHighlights()
     clearDots()
@@ -152,10 +131,11 @@ function selectSquare() {
         fetch("/legal_moves/" + squareName)
             .then(res => res.json())
             .then(data => {
-                if (!data || !data.moves) return
+                if (!data.moves) return
 
-                data.moves.forEach(move => {
-                    let sq = convertFromSquare(move)
+                data.moves.forEach(m => {
+                    let sq = convertFromSquare(m)
+
                     let target = document.querySelector(
                         `[data-row='${sq.row}'][data-col='${sq.col}']`
                     )
@@ -172,9 +152,7 @@ function selectSquare() {
         let from = selected.dataset.row + selected.dataset.col
         let to = this.dataset.row + this.dataset.col
 
-        selected.classList.remove("highlight")
         selected = null
-
         movePiece(from, to)
     }
 }
@@ -196,7 +174,6 @@ function movePiece(from, to) {
 /* ---------------- SEND MOVE ---------------- */
 
 function sendMove(from, to, promotion) {
-
     if (gameOver) return
 
     let move = convertMove(from, to)
@@ -210,8 +187,6 @@ function sendMove(from, to, promotion) {
     .then(res => res.json())
     .then(data => {
 
-        if (gameOver) return
-
         if (data.error) return
 
         if (data.fen) {
@@ -220,23 +195,18 @@ function sendMove(from, to, promotion) {
             addMoveToHistory(move)
         }
 
-        if (data.check && data.check_square) {
-            highlightCheck(data.check_square)
+        if (data.check) {
+            // OPTIONAL: backend may or may not send square
+            // keep safe
         }
-
-        /* ---------------- GAME OVER ---------------- */
 
         if (data.result && !gameOver) {
             gameOver = true
             clearInterval(timerInterval)
 
-            if (gameMode === "ai" && data.result === "win") {
-                unlockNextLevel()
-            }
-
             setTimeout(() => {
                 window.location.href = "/result/" + data.result
-            }, 600)
+            }, 500)
 
             return
         }
@@ -244,43 +214,34 @@ function sendMove(from, to, promotion) {
         /* ---------------- AI MOVE ---------------- */
 
         if (gameMode === "ai") {
-
             if (gameOver) return
 
             setTimeout(() => {
-
                 fetch("/ai_move")
-                .then(res => res.json())
-                .then(aiData => {
+                    .then(res => res.json())
+                    .then(aiData => {
 
-                    if (gameOver) return
+                        if (aiData.fen) {
+                            drawBoard(aiData.fen)
+                            moveSound.play()
+                            addMoveToHistory("AI")
+                        }
 
-                    if (aiData.fen) {
-                        drawBoard(aiData.fen)
-                        moveSound.play()
-                        addMoveToHistory("AI move")
-                    }
+                        if (aiData.result && !gameOver) {
+                            gameOver = true
+                            clearInterval(timerInterval)
 
-                    if (aiData.check && aiData.check_square) {
-                        highlightCheck(aiData.check_square)
-                    }
-
-                    if (aiData.result && !gameOver) {
-                        gameOver = true
-                        clearInterval(timerInterval)
-
-                        setTimeout(() => {
-                            window.location.href = "/result/" + aiData.result
-                        }, 600)
-                    }
-                })
-
-            }, 900)
+                            setTimeout(() => {
+                                window.location.href = "/result/" + aiData.result
+                            }, 500)
+                        }
+                    })
+            }, 600)
         }
     })
 }
 
-/* ---------------- PROMOTE ---------------- */
+/* ---------------- PROMOTION ---------------- */
 
 function promote(piece) {
     document.getElementById("promotionBox").style.display = "none"
@@ -288,20 +249,13 @@ function promote(piece) {
     pendingPromotion = null
 }
 
-/* ---------------- CHECK ---------------- */
+/* ---------------- HISTORY ---------------- */
 
-function highlightCheck(square) {
-    clearCheckHighlight()
-
-    if (!square) return
-
-    let sq = convertFromSquare(square)
-
-    let target = document.querySelector(
-        `[data-row='${sq.row}'][data-col='${sq.col}']`
-    )
-
-    if (target) target.classList.add("check")
+function addMoveToHistory(move) {
+    if (!historyList) return
+    let li = document.createElement("li")
+    li.innerText = move
+    historyList.appendChild(li)
 }
 
 /* ---------------- HELPERS ---------------- */
@@ -310,19 +264,12 @@ function clearHighlights() {
     document.querySelectorAll(".highlight").forEach(e => e.classList.remove("highlight"))
 }
 
-function clearCheckHighlight() {
-    document.querySelectorAll(".check").forEach(e => e.classList.remove("check"))
-}
-
 function clearDots() {
     document.querySelectorAll(".moveDot").forEach(e => e.remove())
 }
 
-function addMoveToHistory(move) {
-    if (!historyList) return
-    let li = document.createElement("li")
-    li.innerText = move
-    historyList.appendChild(li)
+function clearCheckHighlight() {
+    document.querySelectorAll(".check").forEach(e => e.classList.remove("check"))
 }
 
 /* ---------------- CONVERT ---------------- */

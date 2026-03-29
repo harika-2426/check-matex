@@ -6,11 +6,16 @@ import random
 app = Flask(__name__)
 app.secret_key = "super_secret_key"
 
+# ---------------- INIT DB ---------------- #
 database.init_db()
+
+# ---------------- GAME STATE ---------------- #
 
 board = chess.Board()
 mode = "pvp"
 level = 1
+
+# ---------------- PIECE VALUES ---------------- #
 
 piece_values = {
     chess.PAWN: 1,
@@ -21,16 +26,13 @@ piece_values = {
     chess.KING: 0
 }
 
-# ---------------- AI EVAL ---------------- #
+# ---------------- EVALUATION ---------------- #
 
 def evaluate(board):
     score = 0
     for piece in board.piece_map().values():
         value = piece_values[piece.piece_type]
-        if piece.color == chess.WHITE:
-            score += value
-        else:
-            score -= value
+        score += value if piece.color == chess.WHITE else -value
     return score
 
 # ---------------- MINIMAX ---------------- #
@@ -40,46 +42,46 @@ def minimax(board, depth, alpha, beta, maximizing):
         return evaluate(board)
 
     if maximizing:
-        max_eval = -9999
+        best = -9999
         for move in board.legal_moves:
             board.push(move)
-            eval = minimax(board, depth - 1, alpha, beta, False)
+            best = max(best, minimax(board, depth - 1, alpha, beta, False))
             board.pop()
-            max_eval = max(max_eval, eval)
-            alpha = max(alpha, eval)
+            alpha = max(alpha, best)
             if beta <= alpha:
                 break
-        return max_eval
+        return best
     else:
-        min_eval = 9999
+        best = 9999
         for move in board.legal_moves:
             board.push(move)
-            eval = minimax(board, depth - 1, alpha, beta, True)
+            best = min(best, minimax(board, depth - 1, alpha, beta, True))
             board.pop()
-            min_eval = min(min_eval, eval)
-            beta = min(beta, eval)
+            beta = min(beta, best)
             if beta <= alpha:
                 break
-        return min_eval
+        return best
 
 # ---------------- AI MOVE ---------------- #
 
-def ai_move():
+def ai_best_move():
     global level
 
     moves = list(board.legal_moves)
+    if not moves:
+        return None
 
     if level <= 2:
         return random.choice(moves)
 
-    depth = 2 if level <= 4 else 3 if level <= 6 else 4 if level <= 8 else 5
+    depth = 2 if level <= 4 else 3 if level <= 6 else 4
 
     best_move = None
-    best_value = -9999
+    best_value = -99999
 
     for move in moves:
         board.push(move)
-        value = minimax(board, depth - 1, -9999, 9999, False)
+        value = minimax(board, depth - 1, -99999, 99999, False)
         board.pop()
 
         if value > best_value:
@@ -88,35 +90,33 @@ def ai_move():
 
     return best_move
 
-# ================= AUTH ================= #
+# =================== ROUTES =================== #
+
+@app.route("/")
+def home():
+    return render_template("home.html")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        if database.create_user(username, password):
+        if database.create_user(request.form["username"], request.form["password"]):
             return redirect("/login")
         return "User already exists"
-
     return render_template("register.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        user = database.get_user(username, password)
-
+        user = database.get_user(
+            request.form["username"],
+            request.form["password"]
+        )
         if user:
-            session["user"] = username
+            session["user"] = request.form["username"]
             return redirect("/mode")
-
         return "Invalid credentials"
-
     return render_template("login.html")
 
 
@@ -125,9 +125,6 @@ def logout():
     session.pop("user", None)
     return redirect("/")
 
-@app.route("/")
-def home():
-    return render_template("home.html")
 
 @app.route("/mode")
 def mode_page():
@@ -135,13 +132,15 @@ def mode_page():
         return redirect("/login")
     return render_template("mode.html")
 
+
 @app.route("/levels")
-def levels_page():
+def levels():
     if "user" not in session:
         return redirect("/login")
 
     unlocked = database.get_level(session["user"]) or 1
     return render_template("levels.html", unlocked=unlocked)
+
 
 @app.route("/game/<game_mode>/<lvl>")
 def game(game_mode, lvl):
@@ -156,62 +155,16 @@ def game(game_mode, lvl):
 
     return render_template("game.html", mode=mode, level=level)
 
-# ================= RESULT PAGE ================= #
-
-@app.route("/result/<res>")
-def result(res):
-    global mode, level
-
-    if "user" not in session:
-        return redirect("/login")
-
-    winner = None
-    theme = "default"
-
-    if mode == "pvp":
-        if res == "checkmate":
-            winner = "White" if board.turn == chess.BLACK else "Black"
-            theme = "pvp_win"
-        elif res == "draw":
-            winner = "Draw"
-            theme = "pvp_draw"
-
-    elif mode == "ai":
-        if res == "win":
-            winner = "Player"
-            theme = "ai_win"
-
-            current = database.get_level(session["user"]) or 1
-            if level + 1 > current:
-                database.unlock_level(session["user"], level + 1)
-
-        elif res == "lose":
-            winner = "AI"
-            theme = "ai_lose"
-
-        elif res == "draw":
-            winner = "Draw"
-            theme = "ai_draw"
-
-    return render_template("result.html",
-                           result=res,
-                           winner=winner,
-                           mode=mode,
-                           theme=theme)
-
-# ================= GAME RESET ================= #
 
 @app.route("/play_again")
 def play_again():
     global board
 
     board = chess.Board()
+    return redirect(f"/game/{mode}/1")
 
-    if mode == "ai":
-        return redirect(f"/game/ai/{level}")
-    return redirect("/game/pvp/1")
 
-# ================= API ================= #
+# =================== NEW GAME =================== #
 
 @app.route("/new_game")
 def new_game():
@@ -223,43 +176,46 @@ def new_game():
         "timer": 600
     })
 
+
+# =================== LEGAL MOVES =================== #
+
 @app.route("/legal_moves/<square>")
 def legal_moves(square):
-    moves = [
-        chess.square_name(m.to_square)
-        for m in board.legal_moves
-        if chess.square_name(m.from_square) == square
-    ]
+    moves = []
+
+    for move in board.legal_moves:
+        if chess.square_name(move.from_square) == square:
+            moves.append(chess.square_name(move.to_square))
 
     return jsonify({"moves": moves})
 
-# ================= MOVE ================= #
+
+# =================== MOVE PLAYER =================== #
 
 @app.route("/move", methods=["POST"])
 def move():
     global board, mode
 
+    if board.is_game_over():
+        return jsonify({"error": "game over"})
+
     data = request.json
-    move_str = data["move"]
+    move_str = data.get("move")
 
     try:
         move = chess.Move.from_uci(move_str)
     except:
-        return jsonify({"error": "invalid move format"})
+        return jsonify({"error": "bad format"})
 
     if move not in board.legal_moves:
-        return jsonify({"error": "illegal"})
+        return jsonify({"error": "illegal move"})
 
     board.push(move)
 
     result = None
 
-    # 🔥 FIXED CHECKMATE LOGIC
     if board.is_checkmate():
-        if mode == "ai":
-            result = "win" if board.turn == chess.BLACK else "lose"
-        else:
-            result = "checkmate"
+        result = "win" if mode == "ai" else "checkmate"
 
     elif board.is_stalemate() or board.is_insufficient_material():
         result = "draw"
@@ -267,20 +223,27 @@ def move():
     return jsonify({
         "fen": board.fen(),
         "result": result,
-        "check": board.is_check(),
-        "check_square": None
+        "check": board.is_check()
     })
 
-# ================= AI MOVE ================= #
+
+# =================== AI MOVE =================== #
 
 @app.route("/ai_move")
 def ai_move_route():
     global board
 
-    if not board.is_game_over():
-        move = ai_move()
-        if move:
-            board.push(move)
+    if board.is_game_over():
+        return jsonify({
+            "fen": board.fen(),
+            "result": None,
+            "check": board.is_check()
+        })
+
+    move = ai_best_move()
+
+    if move:
+        board.push(move)
 
     result = None
 
@@ -292,11 +255,11 @@ def ai_move_route():
     return jsonify({
         "fen": board.fen(),
         "result": result,
-        "check": board.is_check(),
-        "check_square": None
+        "check": board.is_check()
     })
 
-# ================= RUN ================= #
+
+# =================== RUN =================== #
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
