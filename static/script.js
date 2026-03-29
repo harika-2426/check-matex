@@ -15,7 +15,6 @@ let pendingPromotion = null
 
 const MAX_LEVEL = 10
 
-// ✅ THEME SYSTEM (FIXED - PERSISTENT)
 let currentTheme = parseInt(localStorage.getItem("boardTheme")) || 1
 
 if (!localStorage.getItem("unlockedLevel")) {
@@ -39,7 +38,7 @@ function unlockNextLevel() {
 
     if (current === unlocked && unlocked < MAX_LEVEL) {
         localStorage.setItem("unlockedLevel", unlocked + 1)
-        console.log("✅ Level Unlocked:", unlocked + 1)
+        console.log(" Level Unlocked:", unlocked + 1)
     }
 }
 
