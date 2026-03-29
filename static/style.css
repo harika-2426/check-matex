@@ -187,11 +187,11 @@ left:50%;
 
 transform:translate(-50%,-50%);
 
-background:#90a3a8;
+background:#dc87c3c4;
 
 padding:20px;
 
-border:3px solid rgba(26, 24, 24, 0);
+border:3px solid rgba(26, 24, 24, 0.679);
 
 border-radius:10px;
 
