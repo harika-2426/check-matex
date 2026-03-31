@@ -44,11 +44,6 @@ padding:10px;
     align-items:center;
 }
 
-/* ---------------- THEMES ---------------- */
-
-body.default .white{ background:#e9edf1; }
-body.default .black{ background:#6b7a8f; }
-
 /* ---------------- TITLES ---------------- */
 
 h1{
@@ -124,19 +119,7 @@ position:relative;
 
 }
 
-/* ---------------- THEMES (OLD SUPPORT) ---------------- */
 
-.white{background:#e9edf1;}
-.black{background:#6b7a8f;}
-
-.white.theme2 { background-color: #ecebe7; }
-.black.theme2 { background-color: #415cb1; }
-
-.white.theme3 { background-color: #faf4f4; }
-.black.theme3 { background-color: #46e1f2; }
-
-.white.theme4 { background-color: #CDE7F0; }
-.black.theme4 { background-color: #2C6E91; }
 
 /* ---------------- SELECTED SQUARE ---------------- */
 
@@ -151,7 +134,7 @@ outline:3px solid rgb(11, 7, 7);
 width:12px;
 height:12px;
 
-background-color:rgb(244, 168, 61);
+background-color:#f4941fa3;
 
 border-radius:50%;
 
