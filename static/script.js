@@ -47,7 +47,7 @@ function unlockNextLevel() {
 /* ---------------- THEMES ---------------- */
 const boardThemes = [
     { light: "#ced1d1", dark: "#5e90bb", },
-    { light: "#f3f3f3", dark: "#41f164" },
+    { light: "#f3f3f3", dark: "#439b17da" },
     { light: "#cccccb", dark: "#2e2cb3df" },
     { light: "#f5f5dc", dark: "#8b7355" },
     { light: "#e9edf1", dark: "#6b7a8f" },
