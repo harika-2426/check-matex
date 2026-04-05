@@ -8,11 +8,48 @@ let timerInterval
 
 let moveSound = new Audio("/static/sounds/move_sound.wav")
 
+// 🔊 SOUND TOGGLE SYSTEM ----------------
+let soundOn = localStorage.getItem("sound") !== "off"
+
+const soundToggle = document.getElementById("soundToggle")
+const soundIcon = document.getElementById("soundIcon")
+const soundText = document.getElementById("soundText")
+
+function updateSoundUI() {
+    if (!soundIcon || !soundText) return
+
+    if (soundOn) {
+        soundIcon.textContent = "🔊"
+        soundText.textContent = "ON"
+    } else {
+        soundIcon.textContent = "🔇"
+        soundText.textContent = "OFF"
+    }
+}
+
+if (soundToggle) {
+    soundToggle.addEventListener("click", () => {
+        soundOn = !soundOn
+        localStorage.setItem("sound", soundOn ? "on" : "off")
+        updateSoundUI()
+    })
+}
+
+// safe sound play
+function playMoveSound() {
+    if (soundOn) {
+        moveSound.currentTime = 0
+        moveSound.play()
+    }
+}
+
+updateSoundUI()
+// ---------------------------------------
+
 let gameMode = window.location.pathname.includes("ai") ? "ai" : "pvp"
 localStorage.setItem("mode", gameMode)
 
 let pendingPromotion = null
-
 
 let currentTurn = "w"
 
@@ -100,7 +137,6 @@ function drawBoard(fen) {
     boardDiv.innerHTML = ""
     clearCheckHighlight()
 
-    
     currentTurn = fen.split(" ")[1]
 
     let rows = fen.split(" ")[0].split("/")
@@ -137,10 +173,7 @@ function createSquare(r, c, piece) {
         let img = document.createElement("img")
         img.src = "/static/pieces/" + pieces[piece]
         img.classList.add("piece")
-
-       
         img.dataset.piece = piece
-
         square.appendChild(img)
     }
 
@@ -159,14 +192,12 @@ function selectSquare() {
 
     let pieceImg = this.querySelector("img")
 
-    // ---------------- FIRST CLICK ----------------
     if (selected == null) {
 
         if (!pieceImg) return
 
         let piece = pieceImg.dataset.piece
 
-        
         if (
             (currentTurn === "w" && piece === piece.toUpperCase()) ||
             (currentTurn === "b" && piece === piece.toLowerCase())
@@ -197,7 +228,6 @@ function selectSquare() {
         return
     }
 
-    // ---------------- SECOND CLICK ----------------
     let from = selected.dataset.row + selected.dataset.col
     let to = this.dataset.row + this.dataset.col
 
@@ -281,7 +311,7 @@ function sendMove(from, to, promotion) {
 
         if (data.fen) {
             drawBoard(data.fen)
-            moveSound.play()
+            playMoveSound()
             addMoveToHistory(move)
         }
 
@@ -311,7 +341,7 @@ function sendMove(from, to, promotion) {
                 .then(res => res.json())
                 .then(aiData => {
                     drawBoard(aiData.fen)
-                    moveSound.play()
+                    playMoveSound()
                     addMoveToHistory("AI move")
 
                     if (aiData.check) highlightCheck(aiData.check_square)
