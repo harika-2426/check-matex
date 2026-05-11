@@ -1,20 +1,14 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
 <div class="container">
 <h1>Game Result</h1>
-
-<!-- ================= RESULT DISPLAY ================= -->
-
 {% if mode == "pvp" %}
-
     {% if result == "checkmate" %}
         <h2>♔ {{ winner }} Wins!</h2>
     {% elif result == "draw" %}
@@ -22,74 +16,46 @@
     {% else %}
         <h2>{{ result }}</h2>
     {% endif %}
-
     <button onclick="playAgainPVP()">Play Again</button>
-
 {% else %}
-
     {% if result == "win" %}
         <h2>🏆 You Win!</h2>
-
         <button onclick="nextLevel()">Next Level</button>
         <button onclick="retryAI()">Play Again</button>
-
     {% elif result == "lose" %}
         <h2>❌ You Lose</h2>
         <button onclick="retryAI()">Retry</button>
-
     {% elif result == "draw" %}
         <h2>🤝 Draw</h2>
         <button onclick="retryAI()">Play Again</button>
-
     {% else %}
         <h2>{{ result }}</h2>
         <button onclick="retryAI()">Retry</button>
     {% endif %}
-
 {% endif %}
-
 <br><br>
-
 <button onclick="home()">Home</button>
-
-<!-- ================= SCRIPT ================= -->
-
 <script>
-
-// GET VALUES FROM BACKEND OR LOCALSTORAGE
 let mode = "{{ mode }}"
 let level = parseInt(localStorage.getItem("level")) || 1
 let unlocked = parseInt(localStorage.getItem("unlockedLevel")) || 1
-
-// ================= PVP PLAY AGAIN FIX =================
 function playAgainPVP(){
     window.location.href = "/game/pvp/1"
 }
-
-// ================= AI RETRY =================
 function retryAI(){
     window.location.href = `/game/ai/${level}`
 }
-
-// ================= NEXT LEVEL =================
 function nextLevel(){
-
     let next = level + 1
-
     if(next > unlocked){
         localStorage.setItem("unlockedLevel", next)
     }
-
     localStorage.setItem("level", next)
-
     window.location.href = `/levels`
 }
-
-// ================= HOME =================
 function home(){
     window.location.href = "/"
 }
-
 </script>
 </div>
 </body>

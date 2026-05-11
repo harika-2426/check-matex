@@ -8,7 +8,7 @@ let timerInterval
 
 let moveSound = new Audio("/static/sounds/move_sound.wav")
 
-// 🔊 SOUND TOGGLE SYSTEM ----------------
+// SOUND TOGGLE SYSTEM ----------------
 let soundOn = localStorage.getItem("sound") !== "off"
 
 const soundToggle = document.getElementById("soundToggle")

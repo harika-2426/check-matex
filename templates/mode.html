@@ -1,47 +1,31 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Select Mode</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
 </head>
-
 <body>
 <div class="container">
 <h1>Check MateX</h1>
-
 <h3><i>Select Mode</h3>
-
 <div class="centerBox">
-
 <button class="modeBtn" onclick="pvpMode()">
 Player vs Player
 </button>
-
 <button class="modeBtn" onclick="aiMode()">
 Player vs AI
 </button>
-
 </div>
-
 <script>
-
 // Player vs Player
 function pvpMode(){
-
 window.location.href="/game/pvp/1"
-
 }
-
 // Player vs AI
 function aiMode(){
-
 window.location.href="/levels"
-
 }
-
 </script>
 </div>
 </body>

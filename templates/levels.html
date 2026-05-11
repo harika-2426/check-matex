@@ -1,46 +1,29 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Select Level</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
 <div class="container">
 <h1>Check MateX</h1>
 <h3>Select Level</h3>
-
 <div class="levelsContainer">
-
-
 {% for i in range(1,11) %}
-
 {% if i <= unlocked %}
-
 <button class="levelBtn" id="level{{i}}" onclick="startGame({{i}})">
 Level {{i}}
 </button>
-
 {% else %}
-
 <button class="levelBtn locked" id="level{{i}}" disabled>
 🔒 Level {{i}}
 </button>
-
 {% endif %}
-
 {% endfor %}
-
 </div>
-
 <script>
-
-// Load unlocked levels from localStorage
 let unlockedLevel = parseInt(localStorage.getItem("unlockedLevel")) || 1
-
-// Enable only unlocked levels
 for(let i=1; i<=10; i++){
     let btn = document.getElementById("level"+i)
     if(btn){
@@ -51,13 +34,10 @@ for(let i=1; i<=10; i++){
         }
     }
 }
-
-// Function to start game
 function startGame(level){
     localStorage.setItem("currentLevel", level)
     window.location.href="/game/ai/" + level
 }
-
 </script>
 </div>
 </body>
